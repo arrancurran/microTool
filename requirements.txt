@@ -1,0 +1,3 @@
+ximea
+opencv-python
+Pillow
