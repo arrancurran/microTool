@@ -1,170 +1,189 @@
-import sys
-from typing import Dict, Any
-import cv2
-import matplotlib.pyplot as plt
+import sys, cv2, matplotlib.pyplot as plt
+
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QVBoxLayout, 
-    QWidget, QSlider, QHBoxLayout, QGridLayout
+    QApplication, QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QGridLayout, QSizePolicy,
+    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout
 )
 from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtCore import Qt, QTimer
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import utils
+
 from instruments.camera import Camera
 
-
-class CameraDisplay(QLabel):
-    """Widget for displaying camera feed."""
-    
-    def __init__(self, parent: QWidget = None):
-        super().__init__(parent)
-        self.setAlignment(Qt.AlignmentFlag.AlignRight)
-    
-    def update_image(self, image_data: Any) -> None:
-        """Update the display with new image data."""
-        if len(image_data.shape) == 2:
-            height, width = image_data.shape
-            bytes_per_line = width
-            q_img = QImage(image_data.data, width, height, bytes_per_line, 
-                         QImage.Format.Format_Grayscale8)
-        else:
-            image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-            height, width, channel = image_data.shape
-            bytes_per_line = 3 * width
-            q_img = QImage(image_data.data, width, height, bytes_per_line, 
-                         QImage.Format.Format_RGB888)
-
-        pixmap = QPixmap.fromImage(q_img)
-        self.setPixmap(pixmap.scaled(
-            self.size(), 
-            Qt.AspectRatioMode.KeepAspectRatio, 
-            Qt.TransformationMode.SmoothTransformation
-        ))
-
-
-class CameraControls(QWidget):
-    """Widget containing camera control elements."""
-    
-    def __init__(self, metadata: Dict[str, Any], parent: QWidget = None):
-        super().__init__(parent)
-        self.metadata = metadata
-        self.setup_ui()
-    
-    def setup_ui(self) -> None:
-        """Initialize the UI components."""
-        layout = QGridLayout(self)
-        
-        # Histogram display
-        self.hist_display = FigureCanvas(plt.figure())
-        layout.addWidget(self.hist_display, 0, 1)
-        
-        # Exposure controls
-        self.exposure_slider = QSlider(Qt.Orientation.Horizontal, self)
-        self.exposure_slider.setStyleSheet("background-color: #FFFFFF;")
-        self.exposure_slider.setRange(
-            self.metadata['min_exposure'], 
-            self.metadata['max_exposure']
-        )
-        self.exposure_slider.setValue(self.metadata['min_exposure'])
-        self.exposure_slider.setTickInterval(
-            (self.metadata['max_exposure'] - self.metadata['min_exposure']) // 10
-        )
-        self.exposure_slider.setTickPosition(QSlider.TickPosition.TicksRight)
-        
-        self.exposure_label = QLabel(self)
-        self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.update_exposure_label(self.metadata['min_exposure'])
-        
-        layout.addWidget(self.exposure_slider, 0, 2)
-        layout.addWidget(self.exposure_label, 1, 2)
-    
-    def update_exposure_label(self, value: int) -> None:
-        """Update the exposure label text."""
-        self.exposure_label.setText(f"Exposure: {value} µs")
-
-
-class XiCam(QMainWindow):
-    """Main application window for the XiCam application."""
-    
+class ColloidCam(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setup_camera()
-        self.setup_ui()
-        self.start_capture()
+        
+        self.instruments()
+        self.initUI()
+
+    def instruments(self):
+        # init cam and get cam_meta
+        self.active_camera = Camera()
+        self.active_camera.start_cam()
+        self.cam_meta = self.active_camera.get_cam_cam_meta()
     
-    def setup_camera(self) -> None:
-        """Initialize the camera and get metadata."""
-        self.camera = Camera()
-        self.camera.start_cam()
-        self.metadata = self.camera.get_cam_metadata()
-        self.running = True
-    
-    def setup_ui(self) -> None:
-        """Initialize the user interface."""
-        self.setWindowTitle('XiCam')
-        self.showMaximized()
+    def initUI(self):
+        # Set initial window size
+        self.resize(1200, 800)
+        self.setWindowTitle('ColloidCam')
         self.setStyleSheet("background-color: #25292E;")
         
-        # Main layout
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
+        # Creates the central widget
+        ColloidCam_widget = QWidget(self)
+        self.setCentralWidget(ColloidCam_widget)
+        ColloidCam_layout = QHBoxLayout(ColloidCam_widget)
+        ColloidCam_layout.setContentsMargins(10, 10, 10, 10)
+        ColloidCam_layout.setSpacing(10)
         
-        # Camera controls
-        self.controls = CameraControls(self.metadata, self)
-        self.controls.exposure_slider.valueChanged.connect(self.set_exposure)
+        # Create and configure the camera view
+        self.view = QLabel(self)
+        self.view.setMinimumSize(400, 300)
+        self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # Camera display
-        self.display = CameraDisplay(self)
+        # Create controls container widget with horizontal layout
+        controls_container = QWidget()
+        controls_layout = QHBoxLayout(controls_container)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.setSpacing(10)
         
-        # Add widgets to layout
-        main_layout.addWidget(self.controls, 1)
-        main_layout.addWidget(self.display, 2)
-    
-    def set_exposure(self, value: int) -> None:
-        """Update camera exposure time."""
-        self.camera.set_exposure(value)
-        self.controls.update_exposure_label(value)
-    
-    def start_capture(self) -> None:
-        """Start the image capture loop."""
+        # Left column for ROI controls
+        roi_group = QGroupBox("Region of Interest")
+        roi_layout = QFormLayout()
+        
+        # Create ROI control spinboxes
+        self.roi_width = QSpinBox()
+        self.roi_width.setRange(self.cam_meta['width_min'], self.cam_meta['width_max'])
+        self.roi_width.setSingleStep(self.cam_meta['width_inc'])
+        self.roi_width.setValue(self.cam_meta['width'])
+        self.roi_width.valueChanged.connect(self.update_roi)
+        
+        self.roi_height = QSpinBox()
+        self.roi_height.setRange(self.cam_meta['height_min'], self.cam_meta['height_max'])
+        self.roi_height.setSingleStep(self.cam_meta['height_inc'])
+        self.roi_height.setValue(self.cam_meta['height'])
+        self.roi_height.valueChanged.connect(self.update_roi)
+        
+        self.roi_offset_x = QSpinBox()
+        self.roi_offset_x.setRange(0, 4000)
+        self.roi_offset_x.setValue(0)
+        self.roi_offset_x.valueChanged.connect(self.update_roi)
+        
+        self.roi_offset_y = QSpinBox()
+        self.roi_offset_y.setRange(0, 4000)
+        self.roi_offset_y.setValue(0)
+        self.roi_offset_y.valueChanged.connect(self.update_roi)
+        
+        # Add ROI controls to layout
+        roi_layout.addRow("Width:", self.roi_width)
+        roi_layout.addRow("Height:", self.roi_height)
+        roi_layout.addRow("Offset X:", self.roi_offset_x)
+        roi_layout.addRow("Offset Y:", self.roi_offset_y)
+        roi_group.setLayout(roi_layout)
+        
+        # Right column for histogram and exposure
+        right_column = QWidget()
+        right_layout = QVBoxLayout(right_column)
+        
+        # Configure histogram
+        self.hist_display = FigureCanvas(plt.figure())
+        self.hist_display.setMinimumHeight(100)
+        
+        # Configure exposure slider
+        self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
+        self.exposure_slider.setRange(self.cam_meta['min_exposure'], self.cam_meta['max_exposure'])
+        self.exposure_slider.setValue(self.cam_meta['min_exposure'])
+        self.exposure_slider.setTickInterval((self.cam_meta['max_exposure'] - self.cam_meta['min_exposure']) // 10)
+        self.exposure_slider.valueChanged.connect(self.set_exposure)
+       
+        # Configure exposure label
+        self.exposure_label = QLabel()
+        self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.set_exposure(self.cam_meta['min_exposure'])
+        
+        # Add widgets to right column
+        right_layout.addWidget(self.hist_display)
+        right_layout.addWidget(self.exposure_slider)
+        right_layout.addWidget(self.exposure_label)
+        right_layout.addStretch()
+        
+        # Set size policies
+        self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        roi_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        right_column.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        
+        # Add columns to controls layout
+        controls_layout.addWidget(roi_group)
+        controls_layout.addWidget(right_column)
+        
+        # Add main sections to main layout with proper ratios (2:1:1)
+        ColloidCam_layout.addWidget(self.view, 2)
+        ColloidCam_layout.addWidget(controls_container, 2)
+        
+        self.show()
+        self.running = True
         self.update_image()
-    
-    def update_image(self) -> None:
-        """Capture and display new image frame."""
-        if not self.running:
-            return
+
+    def set_exposure(self, value):
+        self.active_camera.set_exposure(value)
+        self.exposure_label.setText(f"Exposure: {value} µs")
+        
+    def update_roi(self):
+        roi = {
+            'width': self.roi_width.value(),
+            'height': self.roi_height.value(),
+            'offset_x': self.roi_offset_x.value(),
+            'offset_y': self.roi_offset_y.value()
+        }
+        self.active_camera.update_roi(roi)
+
+    def update_image(self):
+        if self.running:
+            image_data = self.active_camera.capture_image()
             
-        try:
-            img_data = self.camera.capture_image()
-            self.display.update_image(img_data)
-            utils.calc_img_hist(self, img_data)
+            if len(image_data.shape) == 2:
+                height, width = image_data.shape
+                bytes_per_line = width
+                formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
+            else:
+                image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+                height, width, channel = image_data.shape
+                bytes_per_line = 3 * width
+                formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+
+            pixmap = QPixmap(formated_image)
+            
+            # Scale image to fit the view while maintaining aspect ratio
+            view_size = self.view.size()
+            scaled_pixmap = pixmap.scaled(
+                view_size, 
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.view.setPixmap(scaled_pixmap)
+        
+            utils.calc_img_hist(self, image_data)
+
             QTimer.singleShot(20, self.update_image)
-        except Exception as e:
-            print(f"Error capturing image: {e}")
+        
+    def keyPressEvent(self, event):
+        if  event.key() == Qt.Key.Key_Escape:  # Handle the Escape key
+            self.close()  # Closes the window and triggers closeEvent
+
+    def closeEvent(self, event):
+        # Stop the camera and clean up
+        if self.running:
             self.running = False
-    
-    def keyPressEvent(self, event) -> None:
-        """Handle key press events."""
-        if event.key() == Qt.Key.Key_Q:
-            self.cleanup()
-    
-    def cleanup(self) -> None:
-        """Clean up resources before closing."""
-        self.running = False
-        self.camera.stop_cam()
-        self.camera.close()
-        cv2.destroyAllWindows()
-        self.close()
-
-
-def main():
-    """Application entry point."""
-    app = QApplication(sys.argv)
-    window = XiCam()
-    sys.exit(app.exec())
-
-
+            self.active_camera.stop_cam()
+            self.active_camera.close()
+            cv2.destroyAllWindows()
+            
+        event.accept()  # Let the window close
+        
 if __name__ == '__main__':
-    main()
+    app = QApplication(sys.argv)
+    ex = ColloidCam()
+    sys.exit(app.exec())

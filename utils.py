@@ -1,10 +1,10 @@
 import cv2
 
-def calc_img_hist(self, img_data):
-        if len(img_data.shape) == 3:
-            img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
+def calc_img_hist(self, image_data):
+        if len(image_data.shape) == 3:
+            image_data = cv2.cvtColor(image_data, cv2.COLOR_RGB2GRAY)
 
-        hist = cv2.calcHist([img_data], [0], None, [256], [0, 256])
+        hist = cv2.calcHist([image_data], [0], None, [256], [0, 256])
         self.hist_display.figure.clear()
         ax = self.hist_display.figure.add_subplot(111)
         ax.plot(hist, color='#97c1ff', linestyle='-', linewidth=0.5, marker='')
