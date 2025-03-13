@@ -1,3 +1,4 @@
 ximea
 opencv-python
 Pillow
+qtawesome

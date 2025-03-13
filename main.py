@@ -2,11 +2,11 @@ import sys, cv2, matplotlib.pyplot as plt
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QGridLayout, QSizePolicy,
-    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout
+    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar
 )
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import Qt, QTimer
-
+from PyQt6.QtGui import QPixmap, QImage, QAction
+from PyQt6.QtCore import Qt, QTimer, QSize
+import qtawesome as qta
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import utils
@@ -18,7 +18,7 @@ class ColloidCam(QMainWindow):
         super().__init__()
         
         self.instruments()
-        self.initUI()
+        self.interface()
 
     def instruments(self):
         # init cam and get cam_meta
@@ -26,7 +26,7 @@ class ColloidCam(QMainWindow):
         self.active_camera.start_cam()
         self.cam_meta = self.active_camera.get_cam_cam_meta()
     
-    def initUI(self):
+    def interface(self):
         # Set initial window size
         self.resize(1200, 800)
         self.setWindowTitle('ColloidCam')
@@ -90,7 +90,10 @@ class ColloidCam(QMainWindow):
         
         # Configure histogram
         self.hist_display = FigureCanvas(plt.figure())
-        self.hist_display.setMinimumHeight(100)
+        self.hist_display.setMinimumWidth(512)
+        self.hist_display.setMaximumWidth(512)
+        self.hist_display.setMinimumHeight(120)
+        self.hist_display.setMaximumHeight(120)
         
         # Configure exposure slider
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
@@ -119,13 +122,35 @@ class ColloidCam(QMainWindow):
         controls_layout.addWidget(roi_group)
         controls_layout.addWidget(right_column)
         
-        # Add main sections to main layout with proper ratios (2:1:1)
+        # Add  sections to main layout with proper ratios
         ColloidCam_layout.addWidget(self.view, 2)
-        ColloidCam_layout.addWidget(controls_container, 2)
+        ColloidCam_layout.addWidget(controls_container, 1)
         
+        # Create toolbar
+        tollbar_height = 28
+        toolbar = QToolBar("Main Toolbar")
+        toolbar.setIconSize(QSize(tollbar_height, tollbar_height))
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+
+        # Add play action
+        play_action = QAction(qta.icon('fa5s.play'), "Play", self)
+        play_action.triggered.connect(self.start_live_display)
+        toolbar.addAction(play_action)
+
+        # Add stop action
+        stop_action = QAction(qta.icon('fa5s.stop'), "Stop", self)
+        stop_action.triggered.connect(self.stop_live_display)
+        toolbar.addAction(stop_action)
+
+        # Add record action
+        record_action = QAction(qta.icon('ei.record'), "Record", self)
+        toolbar.addAction(record_action)
+
+        # Set toolbar size
+        toolbar.setFixedHeight(tollbar_height)
+
+        self.running = False
         self.show()
-        self.running = True
-        self.update_image()
 
     def set_exposure(self, value):
         self.active_camera.set_exposure(value)
@@ -143,19 +168,10 @@ class ColloidCam(QMainWindow):
     def update_image(self):
         if self.running:
             image_data = self.active_camera.capture_image()
-            
-            if len(image_data.shape) == 2:
-                height, width = image_data.shape
-                bytes_per_line = width
-                formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
-            else:
-                image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-                height, width, channel = image_data.shape
-                bytes_per_line = 3 * width
-                formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
-
+            height, width = image_data.shape
+            bytes_per_line = width
+            formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
             pixmap = QPixmap(formated_image)
-            
             # Scale image to fit the view while maintaining aspect ratio
             view_size = self.view.size()
             scaled_pixmap = pixmap.scaled(
@@ -164,9 +180,7 @@ class ColloidCam(QMainWindow):
                 Qt.TransformationMode.SmoothTransformation
             )
             self.view.setPixmap(scaled_pixmap)
-        
             utils.calc_img_hist(self, image_data)
-
             QTimer.singleShot(20, self.update_image)
         
     def keyPressEvent(self, event):
@@ -183,6 +197,21 @@ class ColloidCam(QMainWindow):
             
         event.accept()  # Let the window close
         
+    def start_live_display(self):
+        if not self.running:
+            try:
+                self.active_camera.start_cam()  # Attempt to start the camera
+            except Exception as e:
+                print(f"Camera start error: {e}")
+                return
+            self.running = True
+            self.update_image()
+
+    def stop_live_display(self):
+        if self.running:
+            self.running = False
+            self.active_camera.stop_cam()
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = ColloidCam()
