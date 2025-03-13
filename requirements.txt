@@ -1,4 +1,10 @@
-ximea
-opencv-python
-Pillow
-qtawesome
+# See https://www.ximea.com/software-downloads for ximea api
+#  This project was developed with macOS ARM xiAPI LTS V4.28.00
+# The xiAPI is not included in pip, so you must download it from the link above
+# and install it manually
+# For everything else,pip install -r requirements.txt
+opencv-python==4.5.5.64
+Pillow==9.0.1
+qtawesome==1.1.0
+PyQt6==6.2.2
+matplotlib==3.5.1
