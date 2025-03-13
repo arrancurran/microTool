@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QPixmap, QImage, QAction
 from PyQt6.QtCore import Qt, QTimer, QSize
+# Run qta-browser from terminal to see all available icons
 import qtawesome as qta
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -166,22 +167,22 @@ class ColloidCam(QMainWindow):
         self.active_camera.update_roi(roi)
 
     def update_image(self):
-        if self.running:
-            image_data = self.active_camera.capture_image()
-            height, width = image_data.shape
-            bytes_per_line = width
-            formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
-            pixmap = QPixmap(formated_image)
-            # Scale image to fit the view while maintaining aspect ratio
-            view_size = self.view.size()
-            scaled_pixmap = pixmap.scaled(
-                view_size, 
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            self.view.setPixmap(scaled_pixmap)
-            utils.calc_img_hist(self, image_data)
-            QTimer.singleShot(20, self.update_image)
+        # if self.running:
+        image_data = self.active_camera.capture_image()
+        height, width = image_data.shape
+        bytes_per_line = width
+        formated_image = QImage(image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
+        pixmap = QPixmap(formated_image)
+        # Scale image to fit the view while maintaining aspect ratio
+        view_size = self.view.size()
+        scaled_pixmap = pixmap.scaled(
+            view_size, 
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        self.view.setPixmap(scaled_pixmap)
+        utils.calc_img_hist(self, image_data)
+        QTimer.singleShot(20, self.update_image)
         
     def keyPressEvent(self, event):
         if  event.key() == Qt.Key.Key_Escape:  # Handle the Escape key
@@ -200,7 +201,7 @@ class ColloidCam(QMainWindow):
     def start_live_display(self):
         if not self.running:
             try:
-                self.active_camera.start_cam()  # Attempt to start the camera
+                self.update_image() # Attempt to start the camera
             except Exception as e:
                 print(f"Camera start error: {e}")
                 return
