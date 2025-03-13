@@ -19,9 +19,12 @@ class Camera:
         self.xicam.start_acquisition()
     
     def capture_image(self):
-        self.xicam.get_image(self.img)
-        image_data = self.img.get_image_data_numpy()
-        return image_data
+        try:
+            self.xicam.get_image(self.img)
+            image_data = self.img.get_image_data_numpy()
+            return image_data
+        except xiapi.Xi_error:
+            return None
 
     def stop_cam(self):
         self.xicam.stop_acquisition()
