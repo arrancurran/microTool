@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QTimer
 import utils
 from interface.interface import ui_layout
 from instruments.camera import Camera
-from interface.camera import CameraUI
+# from interface.camera import CameraUI
 
 # UI class that inherits from QMainWindow
 class ColloidCamUI(ui_layout):
@@ -21,7 +21,7 @@ class ColloidCamUI(ui_layout):
         # init cam and get cam_meta
         self.active_camera = Camera()
         # self.active_camera.start_cam()
-        self.cam_meta = self.active_camera.get_cam_cam_meta()
+        self.cam_meta = self.active_camera.get_cam_meta()
     
     def setupUI(self):
         # Create ROI control spinboxes

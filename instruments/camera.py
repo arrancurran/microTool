@@ -32,8 +32,26 @@ class Camera:
         if self.xicam is not None:
             self.xicam.close_device()
             self.xicam = None
+
+    def set_exposure(self, value):
+        self.xicam.set_exposure(value)
+        return value
     
-    def get_cam_cam_meta(self):
+    def update_roi(self, value):
+        """Update the camera's region of interest settings."""
+        width = value['width']
+        height = value['height']
+        offset_x = value['offset_x']
+        offset_y = value['offset_y']
+        try:
+            self.xicam.set_width(width)
+            self.xicam.set_height(height)
+            self.xicam.set_offsetX(offset_x)
+            self.xicam.set_offsetY(offset_y)
+        except xiapi.Xi_error as e:
+            print(f"Error updating ROI: {e}")
+        
+    def get_cam_meta(self):
         cam_meta = {
             'min_exposure': int(self.xicam.get_exposure_minimum()),
             'max_exposure': int(self.xicam.get_exposure_maximum()),
@@ -53,22 +71,4 @@ class Camera:
         }
         
         return cam_meta
-
-    def set_exposure(self, value):
-        self.xicam.set_exposure(value)
-        return value
-    
-    def update_roi(self, value):
-        """Update the camera's region of interest settings."""
-        width = value['width']
-        height = value['height']
-        offset_x = value['offset_x']
-        offset_y = value['offset_y']
-        try:
-            self.xicam.set_width(width)
-            self.xicam.set_height(height)
-            self.xicam.set_offsetX(offset_x)
-            self.xicam.set_offsetY(offset_y)
-        except xiapi.Xi_error as e:
-            print(f"Error updating ROI: {e}")
     

@@ -8,6 +8,8 @@ import qtawesome as qta, matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
+""" ui_layout class sets up the main window layout. It is then called in main.py."""
+
 class ui_layout(QMainWindow):
     def __init__(self):
         super().__init__()
