@@ -2,7 +2,7 @@ import sys, cv2, matplotlib.pyplot as plt
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QGridLayout, QSizePolicy,
-    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar
+    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar,QWidgetAction
 )
 from PyQt6.QtGui import QPixmap, QImage, QAction
 from PyQt6.QtCore import Qt, QTimer, QSize
@@ -13,13 +13,15 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import utils
 
 from instruments.camera import Camera
+from interface.camera import CameraUI
 
-class ColloidCam(QMainWindow):
+# UI class that inherits from QMainWindow
+class ColloidCamUI(QMainWindow):
     def __init__(self):
         super().__init__()
         
         self.instruments()
-        self.interface()
+        self.setupUI()
 
     def instruments(self):
         # init cam and get cam_meta
@@ -27,18 +29,18 @@ class ColloidCam(QMainWindow):
         self.active_camera.start_cam()
         self.cam_meta = self.active_camera.get_cam_cam_meta()
     
-    def interface(self):
+    def setupUI(self):
         # Set initial window size
         self.resize(1200, 800)
-        self.setWindowTitle('ColloidCam')
+        self.setWindowTitle('ColloidCamUI')
         self.setStyleSheet("background-color: #25292E;")
         
         # Creates the central widget
-        ColloidCam_widget = QWidget(self)
-        self.setCentralWidget(ColloidCam_widget)
-        ColloidCam_layout = QHBoxLayout(ColloidCam_widget)
-        ColloidCam_layout.setContentsMargins(10, 10, 10, 10)
-        ColloidCam_layout.setSpacing(10)
+        ColloidCamUI_widget = QWidget(self)
+        self.setCentralWidget(ColloidCamUI_widget)
+        ColloidCamUI_layout = QHBoxLayout(ColloidCamUI_widget)
+        ColloidCamUI_layout.setContentsMargins(10, 10, 10, 10)
+        ColloidCamUI_layout.setSpacing(10)
         
         # Create and configure the camera view
         self.view = QLabel(self)
@@ -124,8 +126,8 @@ class ColloidCam(QMainWindow):
         controls_layout.addWidget(right_column)
         
         # Add  sections to main layout with proper ratios
-        ColloidCam_layout.addWidget(self.view, 2)
-        ColloidCam_layout.addWidget(controls_container, 1)
+        ColloidCamUI_layout.addWidget(self.view, 2)
+        ColloidCamUI_layout.addWidget(controls_container, 1)
         
         # Create toolbar
         tollbar_height = 28
@@ -168,6 +170,8 @@ class ColloidCam(QMainWindow):
 
     def update_image(self):
         # if self.running:
+        if not self.running:
+            return
         image_data = self.active_camera.capture_image()
         height, width = image_data.shape
         bytes_per_line = width
@@ -199,14 +203,14 @@ class ColloidCam(QMainWindow):
         event.accept()  # Let the window close
         
     def start_live_display(self):
-        if not self.running:
-            try:
-                self.update_image() # Attempt to start the camera
-            except Exception as e:
-                print(f"Camera start error: {e}")
-                return
-            self.running = True
-            self.update_image()
+  
+        try:
+            self.update_image() # Attempt to start the camera
+        except Exception as e:
+            print(f"Camera start error: {e}")
+            return
+        self.running = True
+        self.update_image()
 
     def stop_live_display(self):
         if self.running:
@@ -215,5 +219,5 @@ class ColloidCam(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = ColloidCam()
+    ex = ColloidCamUI()
     sys.exit(app.exec())

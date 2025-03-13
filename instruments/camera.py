@@ -1,4 +1,3 @@
-
 from ximea import xiapi
 """
 This module provides a Camera class to interface with XIMEA cameras using the xiAPI library.
