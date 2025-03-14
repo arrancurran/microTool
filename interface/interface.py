@@ -1,22 +1,27 @@
-from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy,
-    QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar)
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QSize
 # Run qta-browser from terminal to see all available icons
 import qtawesome as qta, matplotlib.pyplot as plt
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-""" ui_layout class sets up the main window layout. It is then called in main.py."""
+from interface.ui_camera import ui_camera
 
-class ui_layout(QMainWindow):
+""" 
+ui_layout class sets up the main window layout. It is then called in main.py.
+"""
+
+class ui_layout(QMainWindow, ui_camera):
     def __init__(self):
-        super().__init__()
+        QMainWindow.__init__(self)
+        ui_camera.__init__(self)
         
-        self.setup_ui()
+        self.ui_setup()
+        self.ui_populate()
+        self.ui_camera_setup()
 
-    def setup_ui(self):
+    def ui_setup(self):
+        
         # Set initial window size
         self.resize(1200, 800)
         self.setWindowTitle('ColloidCam')
@@ -48,8 +53,6 @@ class ui_layout(QMainWindow):
         self.roi_height = QSpinBox()
         self.roi_offset_x = QSpinBox()
         self.roi_offset_y = QSpinBox()
-        
-                
         # Right column for histogram and exposure
         right_column = QWidget()
         right_layout = QVBoxLayout(right_column)
@@ -117,3 +120,29 @@ class ui_layout(QMainWindow):
 
         # Set toolbar size
         toolbar.setFixedHeight(toolbar_height)
+
+    def ui_populate(self):
+        ui_camera_data = ui_camera()
+        
+        self.roi_width.setRange(*ui_camera_data.cam_roi_width_range)
+        self.roi_width.setSingleStep(self.cam_roi_width_step)
+        self.roi_width.setValue(self.cam_roi_width)
+        
+        self.roi_height.setRange(*ui_camera_data.cam_roi_height_range)
+        self.roi_height.setSingleStep(self.cam_roi_height_step)
+        self.roi_height.setValue(self.cam_roi_height)
+        
+        self.roi_offset_x.setRange(*ui_camera_data.cam_roi_offset_x_range)
+        self.roi_offset_x.setValue(self.cam_roi_offset_x)
+        self.roi_offset_y.setRange(*ui_camera_data.cam_roi_offset_y_range)
+        self.roi_offset_y.setValue(self.cam_roi_offset_y)
+        
+        self.exposure_slider.setRange(*ui_camera_data.cam_exposure_range)
+        self.exposure_slider.setTickInterval(self.cam_exposure_step)
+        self.exposure_slider.setValue(self.cam_exposure)
+        
+
+
+
+
+
