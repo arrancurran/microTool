@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QSize
 # Run qta-browser from terminal to see all available icons
@@ -6,15 +6,17 @@ import qtawesome as qta, matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from interface.ui_camera import ui_camera
+from instruments.camera import Camera
 
 """ 
 ui_layout class sets up the main window layout. It is then called in main.py.
 """
 
-class ui_layout(QMainWindow, ui_camera):
+class ui_layout(QMainWindow, ui_camera, Camera):
     def __init__(self):
         QMainWindow.__init__(self)
         ui_camera.__init__(self)
+        Camera.__init__(self)
         
         self.ui_setup()
         self.ui_populate()
@@ -24,26 +26,26 @@ class ui_layout(QMainWindow, ui_camera):
         
         # Set initial window size
         self.resize(1200, 800)
-        self.setWindowTitle('ColloidCam')
+        self.setWindowTitle('Tweezer Camera')
         self.setStyleSheet("background-color: #25292E;")
         
         # Creates the central widget
         MainWindow_widget = QWidget(self)
         self.setCentralWidget(MainWindow_widget)
         MainWindow_layout = QHBoxLayout(MainWindow_widget)
-        MainWindow_layout.setContentsMargins(10, 10, 10, 10)
-        MainWindow_layout.setSpacing(10)
+        MainWindow_layout.setContentsMargins(0, 0, 0, 0)
+        MainWindow_layout.setSpacing(0)
         
         # Create controls container widget with horizontal layout
         controls_container = QWidget()
         controls_layout = QHBoxLayout(controls_container)
         controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(10)
+        controls_layout.setSpacing(0)
         
-        # Create and configure the camera view
-        self.view = QLabel(self)
-        self.view.setMinimumSize(400, 300)
-        self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Create and configure the camera image_container
+        self.image_container = QLabel(self)
+        self.image_container.setMinimumSize(400, 300)
+        self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # ROI controls
         roi_group = QGroupBox("Region of Interest")
@@ -83,7 +85,7 @@ class ui_layout(QMainWindow, ui_camera):
         right_layout.addStretch()
         
         # Set size policies
-        self.view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.image_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         roi_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         right_column.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         
@@ -92,7 +94,7 @@ class ui_layout(QMainWindow, ui_camera):
         controls_layout.addWidget(right_column)
         
         # Add  sections to main layout with proper ratios
-        MainWindow_layout.addWidget(self.view, 2)
+        MainWindow_layout.addWidget(self.image_container, 2)
         MainWindow_layout.addWidget(controls_container, 1)
         
         # Create toolbar
@@ -121,6 +123,32 @@ class ui_layout(QMainWindow, ui_camera):
         # Set toolbar size
         toolbar.setFixedHeight(toolbar_height)
 
+        # Create status bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+
+        # Create QLabel widgets for each piece of information
+        self.camera_model_label = QLabel()
+        self.camera_type_label = QLabel()
+        self.roi_data_label = QLabel()
+        self.framerate_label = QLabel()
+        self.image_size_on_disk_label = QLabel()
+        self.image_size_on_disk_bandwidth_label = QLabel()
+        self.camera_model_label.setStyleSheet("padding-right: 10px;")
+        self.camera_type_label.setStyleSheet("padding-right: 10px;")
+        self.roi_data_label.setStyleSheet("padding-right: 10px;")
+        self.framerate_label.setStyleSheet("padding-right: 10px;")
+        self.image_size_on_disk_label.setStyleSheet("padding-right: 10px;")
+        self.image_size_on_disk_bandwidth_label.setStyleSheet("padding-right: 10px;")
+        # Add QLabel widgets to the status bar
+        self.status_bar.addWidget(self.camera_model_label)
+        self.status_bar.addWidget(self.camera_type_label)
+        self.status_bar.addWidget(self.roi_data_label)
+        self.status_bar.addWidget(self.framerate_label)
+        self.status_bar.addWidget(self.image_size_on_disk_label)
+        self.status_bar.addWidget(self.image_size_on_disk_bandwidth_label)
+        self.update_status_bar()
+
     def ui_populate(self):
         ui_camera_data = ui_camera()
         
@@ -142,7 +170,14 @@ class ui_layout(QMainWindow, ui_camera):
         self.exposure_slider.setValue(self.cam_exposure)
         
 
-
-
-
-
+    def update_status_bar(self):
+        camera_meta = self.get_cam_meta()
+        # Update each QLabel with the respective information
+        self.camera_model_label.setText(f"{camera_meta['device_name']}")
+        self.camera_type_label.setText(f"{camera_meta['device_type']}")
+        self.roi_data_label.setText(f"{camera_meta['width']}x{camera_meta['height']}")
+        self.framerate_label.setText(f"@ {int(camera_meta['framerate'])} Hz")
+        image_size_on_disk = camera_meta['width']*camera_meta['height']/1024/1024
+        self.image_size_on_disk_label.setText(f"{image_size_on_disk:.2f} MB")
+        image_size_on_disk_bandwidth = image_size_on_disk*camera_meta['framerate']
+        self.image_size_on_disk_bandwidth_label.setText(f"{image_size_on_disk_bandwidth:.2f} MB/s")

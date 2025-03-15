@@ -4,9 +4,7 @@ from instruments.camera import Camera
 class ui_camera(Camera):
     def __init__(self):
         Camera.__init__(self)
-        self.active_cam = Camera()
-        self.cam_meta = self.active_cam.get_cam_meta()
-
+        self.cam_meta = self.get_cam_meta()
         self.ui_camera_setup()
     
     def ui_camera_setup(self):

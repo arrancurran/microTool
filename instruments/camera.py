@@ -20,6 +20,7 @@ class Camera:
     def capture_image(self):
         try:
             self.xicam.get_image(self.img)
+            # Return the data as a NumPy.Array with dimension Image.height x Image.width (in case imgdataformat is XI_MONO8, XI_MONO16, XI_RAW8 or XI_RAW16), Image.height x Image.width x 3 (in case imgdataformat is XI_RGB24) or Image.height x Image.width x 4 (in case imgdataformat is XI_RGB24)
             image_data = self.img.get_image_data_numpy()
             return image_data
         except xiapi.Xi_error:
@@ -33,7 +34,7 @@ class Camera:
             self.xicam.close_device()
             self.xicam = None
 
-    def set_exposure(self, value):
+    def update_exposure(self, value):
         self.xicam.set_exposure(value)
         return value
     
@@ -68,6 +69,17 @@ class Camera:
             'height_min': self.xicam.get_height_minimum(),
             'height_max': self.xicam.get_height_maximum(),
             'height_inc': self.xicam.get_height_increment(),
+            'offset_x': self.xicam.get_offsetX(),
+            'offset_x_min': self.xicam.get_offsetX_minimum(),
+            'offset_x_max': self.xicam.get_offsetX_maximum(),
+            'offset_x_inc': self.xicam.get_offsetX_increment(),
+            'offset_y': self.xicam.get_offsetY(),
+            'offset_y_min': self.xicam.get_offsetY_minimum(),
+            'offset_y_max': self.xicam.get_offsetY_maximum(),
+            'offset_y_inc': self.xicam.get_offsetY_increment(),
+            'device_name': self.xicam.get_device_name().decode('utf-8'),
+            'device_model_id': self.xicam.get_device_model_id(),
+            'device_type': self.xicam.get_device_type().decode('utf-8'),
         }
         
         return cam_meta
