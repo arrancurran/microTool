@@ -1,0 +1,39 @@
+{
+    "set": [
+        {"cmd":"exposure","type":"float"},
+        {"cmd":"framerate","type":"float"},
+        {"cmd":"width","type":"int"},
+        {"cmd":"height","type":"int"},
+        {"cmd":"offsetX","type":"int"},
+        {"cmd":"offsetY","type":"int"}
+    ],
+    "get": [
+        {"cmd": "exposure_minimum","type": "float"},
+        {"cmd": "exposure_maximum","type": "float"},
+        {"cmd": "framerate_minimum","type": "float"},
+        {"cmd": "framerate_maximum","type": "float"},
+        {"cmd": "framerate_increment","type": "float"},
+        {"cmd": "width_minimum","type": "int"},
+        {"cmd": "width_maximum","type": "int"},
+        {"cmd": "width_increment","type": "int"},
+        {"cmd": "height_minimum","type": "int"},
+        {"cmd": "height_maximum","type": "int"},
+        {"cmd": "height_increment","type": "int"},
+        {"cmd": "offsetX_minimum","type": "int"},
+        {"cmd": "offsetX_maximum","type": "int"},
+        {"cmd": "offsetX_increment","type": "int"},
+        {"cmd": "offsetY_minimum","type": "int"},
+        {"cmd": "offsetY_maximum","type": "int"},
+        {"cmd": "offsetY_increment","type": "int"},
+        {"cmd": "device_name","type": "str"},
+        {"cmd": "device_model_id","type": "int"},
+        {"cmd": "device_type","type": "str"},
+        {"cmd": "device_sn","type": "str"},
+        {"cmd":"exposure","type":"float"},
+        {"cmd":"framerate","type":"float"},
+        {"cmd":"width","type":"int"},
+        {"cmd":"height","type":"int"},
+        {"cmd":"offsetX","type":"int"},
+        {"cmd":"offsetY","type":"int"}
+    ]
+}
