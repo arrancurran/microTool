@@ -2,39 +2,52 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, 
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QSize
 # Run qta-browser from terminal to see all available icons
-import qtawesome as qta, matplotlib.pyplot as plt
+import qtawesome as qta
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-
-from interface.ui_camera import ui_camera
-from instruments.camera import Camera
+import json, os
 
 """ 
 ui_layout class sets up the main window layout. It is then called in main.py.
 """
 
-class ui_layout(QMainWindow, ui_camera, Camera):
+class BaseInterface(QMainWindow):
+    """
+    Base interface class that contains all UI elements without hardware dependencies.
+    """
     def __init__(self):
         QMainWindow.__init__(self)
-        ui_camera.__init__(self)
-        Camera.__init__(self)
-        
+        self.settings = self.load_settings()
         self.ui_setup()
         self.ui_populate()
-        self.ui_camera_setup()
+
+    def load_settings(self):
+        """Load settings from ui_settings.json"""
+        settings_path = os.path.join(os.path.dirname(__file__), 'ui_settings.json')
+        with open(settings_path, 'r') as f:
+            return json.load(f)
 
     def ui_setup(self):
-        
-        # Set initial window size
-        self.resize(1200, 800)
-        self.setWindowTitle('Tweezer Camera')
-        self.setStyleSheet("background-color: #25292E;")
+        # Set initial window size and properties from settings
+        window_settings = self.settings['window']
+        self.resize(window_settings['initial_width'], window_settings['initial_height'])
+        self.setWindowTitle(window_settings['title'])
+        self.setStyleSheet(f"background-color: {window_settings['background_color']};")
         
         # Creates the central widget
         MainWindow_widget = QWidget(self)
         self.setCentralWidget(MainWindow_widget)
         MainWindow_layout = QHBoxLayout(MainWindow_widget)
-        MainWindow_layout.setContentsMargins(0, 0, 0, 0)
-        MainWindow_layout.setSpacing(0)
+        
+        # Set layout properties from settings
+        layout_settings = self.settings['layout']
+        MainWindow_layout.setContentsMargins(
+            layout_settings['margins']['left'],
+            layout_settings['margins']['top'],
+            layout_settings['margins']['right'],
+            layout_settings['margins']['bottom']
+        )
+        MainWindow_layout.setSpacing(layout_settings['spacing'])
         
         # Create controls container widget with horizontal layout
         controls_container = QWidget()
@@ -44,7 +57,8 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         
         # Create and configure the camera image_container
         self.image_container = QLabel(self)
-        self.image_container.setMinimumSize(400, 300)
+        image_settings = self.settings['image_display']
+        self.image_container.setMinimumSize(image_settings['min_width'], image_settings['min_height'])
         self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # ROI controls
@@ -55,11 +69,12 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         self.roi_height = QSpinBox()
         self.roi_offset_x = QSpinBox()
         self.roi_offset_y = QSpinBox()
+        
         # Right column for histogram and exposure
         right_column = QWidget()
         right_layout = QVBoxLayout(right_column)
         
-         # Add ROI controls to layout
+        # Add ROI controls to layout
         roi_layout.addRow("Width:", self.roi_width)
         roi_layout.addRow("Height:", self.roi_height)
         roi_layout.addRow("Offset X:", self.roi_offset_x)
@@ -73,12 +88,12 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         self.hist_display.setMinimumHeight(120)
         self.hist_display.setMaximumHeight(120)
         
-         # Configure exposure slider
+        # Configure exposure slider
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
         self.exposure_label = QLabel()
         self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
        
-         # Add widgets to right column
+        # Add widgets to right column
         right_layout.addWidget(self.hist_display)
         right_layout.addWidget(self.exposure_slider)
         right_layout.addWidget(self.exposure_label)
@@ -93,7 +108,7 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         controls_layout.addWidget(roi_group)
         controls_layout.addWidget(right_column)
         
-        # Add  sections to main layout with proper ratios
+        # Add sections to main layout with proper ratios
         MainWindow_layout.addWidget(self.image_container, 2)
         MainWindow_layout.addWidget(controls_container, 1)
         
@@ -134,12 +149,13 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         self.framerate_label = QLabel()
         self.image_size_on_disk_label = QLabel()
         self.image_size_on_disk_bandwidth_label = QLabel()
-        self.camera_model_label.setStyleSheet("padding-right: 10px;")
-        self.camera_type_label.setStyleSheet("padding-right: 10px;")
-        self.roi_data_label.setStyleSheet("padding-right: 10px;")
-        self.framerate_label.setStyleSheet("padding-right: 10px;")
-        self.image_size_on_disk_label.setStyleSheet("padding-right: 10px;")
-        self.image_size_on_disk_bandwidth_label.setStyleSheet("padding-right: 10px;")
+        
+        # Set styles for labels
+        for label in [self.camera_model_label, self.camera_type_label, 
+                     self.roi_data_label, self.framerate_label,
+                     self.image_size_on_disk_label, self.image_size_on_disk_bandwidth_label]:
+            label.setStyleSheet("padding-right: 10px;")
+        
         # Add QLabel widgets to the status bar
         self.status_bar.addWidget(self.camera_model_label)
         self.status_bar.addWidget(self.camera_type_label)
@@ -147,37 +163,67 @@ class ui_layout(QMainWindow, ui_camera, Camera):
         self.status_bar.addWidget(self.framerate_label)
         self.status_bar.addWidget(self.image_size_on_disk_label)
         self.status_bar.addWidget(self.image_size_on_disk_bandwidth_label)
-        self.update_status_bar()
 
     def ui_populate(self):
-        ui_camera_data = ui_camera()
+        # Set ROI controls from settings
+        roi_settings = self.settings['roi']
         
-        self.roi_width.setRange(*ui_camera_data.cam_roi_width_range)
-        self.roi_width.setSingleStep(self.cam_roi_width_step)
-        self.roi_width.setValue(self.cam_roi_width)
+        # Width settings
+        self.roi_width.setRange(roi_settings['width']['min'], roi_settings['width']['max'])
+        self.roi_width.setSingleStep(roi_settings['width']['step'])
+        self.roi_width.setValue(roi_settings['width']['default'])
         
-        self.roi_height.setRange(*ui_camera_data.cam_roi_height_range)
-        self.roi_height.setSingleStep(self.cam_roi_height_step)
-        self.roi_height.setValue(self.cam_roi_height)
+        # Height settings
+        self.roi_height.setRange(roi_settings['height']['min'], roi_settings['height']['max'])
+        self.roi_height.setSingleStep(roi_settings['height']['step'])
+        self.roi_height.setValue(roi_settings['height']['default'])
         
-        self.roi_offset_x.setRange(*ui_camera_data.cam_roi_offset_x_range)
-        self.roi_offset_x.setValue(self.cam_roi_offset_x)
-        self.roi_offset_y.setRange(*ui_camera_data.cam_roi_offset_y_range)
-        self.roi_offset_y.setValue(self.cam_roi_offset_y)
+        # Offset X settings
+        self.roi_offset_x.setRange(roi_settings['offset_x']['min'], roi_settings['offset_x']['max'])
+        self.roi_offset_x.setSingleStep(roi_settings['offset_x']['step'])
+        self.roi_offset_x.setValue(roi_settings['offset_x']['default'])
         
-        self.exposure_slider.setRange(*ui_camera_data.cam_exposure_range)
-        self.exposure_slider.setTickInterval(self.cam_exposure_step)
-        self.exposure_slider.setValue(self.cam_exposure)
+        # Offset Y settings
+        self.roi_offset_y.setRange(roi_settings['offset_y']['min'], roi_settings['offset_y']['max'])
+        self.roi_offset_y.setSingleStep(roi_settings['offset_y']['step'])
+        self.roi_offset_y.setValue(roi_settings['offset_y']['default'])
         
+        # Set exposure slider range and default value
+        self.exposure_slider.setRange(0, 10000)
+        self.exposure_slider.setValue(1000)
+        
+        # Update status bar with default values
+        self.update_status_bar()
 
     def update_status_bar(self):
-        camera_meta = self.get_cam_meta()
-        # Update each QLabel with the respective information
-        self.camera_model_label.setText(f"{camera_meta['device_name']}")
-        self.camera_type_label.setText(f"{camera_meta['device_type']}")
-        self.roi_data_label.setText(f"{camera_meta['width']}x{camera_meta['height']}")
-        self.framerate_label.setText(f"@ {int(camera_meta['framerate'])} Hz")
-        image_size_on_disk = camera_meta['width']*camera_meta['height']/1024/1024
-        self.image_size_on_disk_label.setText(f"{image_size_on_disk:.2f} MB")
-        image_size_on_disk_bandwidth = image_size_on_disk*camera_meta['framerate']
-        self.image_size_on_disk_bandwidth_label.setText(f"{image_size_on_disk_bandwidth:.2f} MB/s")
+        # Update status bar with default values
+        self.camera_model_label.setText("No Camera")
+        self.camera_type_label.setText("Not Connected")
+        self.roi_data_label.setText(f"{self.roi_width.value()}x{self.roi_height.value()}")
+        self.framerate_label.setText("@ 0 Hz")
+        self.image_size_on_disk_label.setText("0.00 MB")
+        self.image_size_on_disk_bandwidth_label.setText("0.00 MB/s")
+
+    def start_live_display(self):
+        """Override this method in derived classes to implement camera-specific live display"""
+        pass
+
+    def stop_live_display(self):
+        """Override this method in derived classes to implement camera-specific stop display"""
+        pass
+
+    def start_recording(self):
+        """Override this method in derived classes to implement camera-specific recording"""
+        pass
+
+class ui_layout(BaseInterface):
+    """
+    Camera-specific interface class that inherits from BaseInterface and adds camera functionality.
+    """
+    def __init__(self):
+        BaseInterface.__init__(self)
+        self.ui_camera_setup()
+
+    def ui_camera_setup(self):
+        """Setup camera-specific UI elements and connections"""
+        pass
