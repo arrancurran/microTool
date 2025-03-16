@@ -1,0 +1,47 @@
+{
+    "window": {
+        "initial_width": 1200,
+        "initial_height": 800,
+        "title": "Tweezer Camera",
+        "background_color": "#25292E"
+    },
+    "image_display": {
+        "min_width": 400,
+        "min_height": 300
+    },
+    "roi": {
+        "width": {
+            "min": 0,
+            "max": 4000,
+            "default": 0,
+            "step": 1
+        },
+        "height": {
+            "min": 0, 
+            "max": 4000,
+            "default": 0,
+            "step": 1
+        },
+        "offset_x": {
+            "min": 0,
+            "max": 4000,
+            "default": 0,
+            "step": 1
+        },
+        "offset_y": {
+            "min": 0,
+            "max": 4000,
+            "default": 0,
+            "step": 1
+        }
+    },
+    "layout": {
+        "margins": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+        },
+        "spacing": 0
+    }
+}
