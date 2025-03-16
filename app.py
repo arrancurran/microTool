@@ -1,8 +1,8 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from interface.interface import BaseInterface
+from interface.ui_scaffolding import uiScaffolding
 
 app = QApplication(sys.argv)
-interface = BaseInterface()
+interface = uiScaffolding()
 interface.show()
 sys.exit(app.exec())

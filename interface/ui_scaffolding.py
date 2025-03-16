@@ -11,51 +11,56 @@ import json, os
 ui_layout class sets up the main window layout. It is then called in main.py.
 """
 
-class BaseInterface(QMainWindow):
+class uiScaffolding(QMainWindow):
     """
     Base interface class that contains all UI elements without hardware dependencies.
     """
     def __init__(self):
-        QMainWindow.__init__(self)
+        super().__init__()
+        
         self.settings = self.load_settings()
-        self.ui_setup()
-        self.ui_populate()
+        
+        self.ui_scaffold()
 
     def load_settings(self):
         """Load settings from ui_settings.json"""
-        settings_path = os.path.join(os.path.dirname(__file__), 'ui_settings.json')
+        settings_path = 'ui_settings.json'
         with open(settings_path, 'r') as f:
             return json.load(f)
 
-    def ui_setup(self):
-        # Set initial window size and properties from settings
+    def ui_scaffold(self):
+        """Set up the main window"""
         window_settings = self.settings['window']
         self.resize(window_settings['initial_width'], window_settings['initial_height'])
         self.setWindowTitle(window_settings['title'])
         self.setStyleSheet(f"background-color: {window_settings['background_color']};")
         
-        # Creates the central widget
         MainWindow_widget = QWidget(self)
         self.setCentralWidget(MainWindow_widget)
         MainWindow_layout = QHBoxLayout(MainWindow_widget)
         
-        # Set layout properties from settings
-        layout_settings = self.settings['layout']
+        layout_settings = self.settings['window']['margins']
         MainWindow_layout.setContentsMargins(
-            layout_settings['margins']['left'],
-            layout_settings['margins']['top'],
-            layout_settings['margins']['right'],
-            layout_settings['margins']['bottom']
+            layout_settings['left'],
+            layout_settings['top'],
+            layout_settings['right'],
+            layout_settings['bottom']
         )
-        MainWindow_layout.setSpacing(layout_settings['spacing'])
+        MainWindow_layout.setSpacing( self.settings['window']['spacing'])
         
-        # Create controls container widget with horizontal layout
+        """Create controls container with horizontal layout"""
         controls_container = QWidget()
         controls_layout = QHBoxLayout(controls_container)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(0)
+        margins = self.settings['container']['margins']
+        controls_layout.setContentsMargins(
+            margins['left'],
+            margins['top'], 
+            margins['right'],
+            margins['bottom']
+        )
+        controls_layout.setSpacing(self.settings['container']['spacing'])
         
-        # Create and configure the camera image_container
+        """Create and configure the camera image_container"""
         self.image_container = QLabel(self)
         image_settings = self.settings['image_display']
         self.image_container.setMinimumSize(image_settings['min_width'], image_settings['min_height'])
@@ -82,11 +87,13 @@ class BaseInterface(QMainWindow):
         roi_group.setLayout(roi_layout)
 
         # Configure histogram
-        self.hist_display = FigureCanvas(plt.figure())
-        self.hist_display.setMinimumWidth(512)
-        self.hist_display.setMaximumWidth(512)
-        self.hist_display.setMinimumHeight(120)
-        self.hist_display.setMaximumHeight(120)
+        self.hist_figure = plt.figure()
+        self.hist_display = FigureCanvas(self.hist_figure)
+        self.hist_display.setFixedSize(512, 120)
+        self.hist_ax = self.hist_figure.add_subplot(111)
+        self.hist_ax.set_title('Image Histogram')
+        self.hist_ax.set_xlabel('Intensity')
+        self.hist_ax.set_ylabel('Count')
         
         # Configure exposure slider
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
@@ -164,36 +171,36 @@ class BaseInterface(QMainWindow):
         self.status_bar.addWidget(self.image_size_on_disk_label)
         self.status_bar.addWidget(self.image_size_on_disk_bandwidth_label)
 
-    def ui_populate(self):
-        # Set ROI controls from settings
-        roi_settings = self.settings['roi']
+    # def ui_populate(self):
+    #     # Set ROI controls from settings
+    #     roi_settings = self.settings['roi']
         
-        # Width settings
-        self.roi_width.setRange(roi_settings['width']['min'], roi_settings['width']['max'])
-        self.roi_width.setSingleStep(roi_settings['width']['step'])
-        self.roi_width.setValue(roi_settings['width']['default'])
+    #     # Width settings
+    #     self.roi_width.setRange(roi_settings['width']['min'], roi_settings['width']['max'])
+    #     self.roi_width.setSingleStep(roi_settings['width']['step'])
+    #     self.roi_width.setValue(roi_settings['width']['default'])
         
-        # Height settings
-        self.roi_height.setRange(roi_settings['height']['min'], roi_settings['height']['max'])
-        self.roi_height.setSingleStep(roi_settings['height']['step'])
-        self.roi_height.setValue(roi_settings['height']['default'])
+    #     # Height settings
+    #     self.roi_height.setRange(roi_settings['height']['min'], roi_settings['height']['max'])
+    #     self.roi_height.setSingleStep(roi_settings['height']['step'])
+    #     self.roi_height.setValue(roi_settings['height']['default'])
         
-        # Offset X settings
-        self.roi_offset_x.setRange(roi_settings['offset_x']['min'], roi_settings['offset_x']['max'])
-        self.roi_offset_x.setSingleStep(roi_settings['offset_x']['step'])
-        self.roi_offset_x.setValue(roi_settings['offset_x']['default'])
+    #     # Offset X settings
+    #     self.roi_offset_x.setRange(roi_settings['offset_x']['min'], roi_settings['offset_x']['max'])
+    #     self.roi_offset_x.setSingleStep(roi_settings['offset_x']['step'])
+    #     self.roi_offset_x.setValue(roi_settings['offset_x']['default'])
         
-        # Offset Y settings
-        self.roi_offset_y.setRange(roi_settings['offset_y']['min'], roi_settings['offset_y']['max'])
-        self.roi_offset_y.setSingleStep(roi_settings['offset_y']['step'])
-        self.roi_offset_y.setValue(roi_settings['offset_y']['default'])
+    #     # Offset Y settings
+    #     self.roi_offset_y.setRange(roi_settings['offset_y']['min'], roi_settings['offset_y']['max'])
+    #     self.roi_offset_y.setSingleStep(roi_settings['offset_y']['step'])
+    #     self.roi_offset_y.setValue(roi_settings['offset_y']['default'])
         
-        # Set exposure slider range and default value
-        self.exposure_slider.setRange(0, 10000)
-        self.exposure_slider.setValue(1000)
+    #     # Set exposure slider range and default value
+    #     self.exposure_slider.setRange(0, 10000)
+    #     self.exposure_slider.setValue(1000)
         
-        # Update status bar with default values
-        self.update_status_bar()
+    #     # Update status bar with default values
+    #     self.update_status_bar()
 
     def update_status_bar(self):
         # Update status bar with default values
@@ -216,12 +223,27 @@ class BaseInterface(QMainWindow):
         """Override this method in derived classes to implement camera-specific recording"""
         pass
 
-class ui_layout(BaseInterface):
+    def update_histogram(self, data, bins=256):
+        """
+        Update the histogram display with new data.
+        
+        Args:
+            data (numpy.ndarray): The image data to create histogram from
+            bins (int): Number of bins for the histogram
+        """
+        self.hist_ax.clear()
+        self.hist_ax.hist(data.ravel(), bins=bins, range=(0, 256))
+        self.hist_ax.set_title('Image Histogram')
+        self.hist_ax.set_xlabel('Intensity')
+        self.hist_ax.set_ylabel('Count')
+        self.hist_display.draw()
+
+class ui_layout(uiScaffolding):
     """
-    Camera-specific interface class that inherits from BaseInterface and adds camera functionality.
+    Camera-specific interface class that inherits from uiScaffolding and adds camera functionality.
     """
     def __init__(self):
-        BaseInterface.__init__(self)
+        uiScaffolding.__init__(self)
         self.ui_camera_setup()
 
     def ui_camera_setup(self):

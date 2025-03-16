@@ -1,0 +1,54 @@
+{
+    "window": {
+        "initial_width": 1200,
+        "initial_height": 800,
+        "title": "ColloidCam",
+        "background_color": "#2b2b2b",
+        "margins": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+        },
+        "spacing": 0
+    },
+    "container": {
+        "margins": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+        },
+        "spacing": 0
+    },
+    "image_display": {
+        "min_width": 640,
+        "min_height": 480
+    },
+    "roi": {
+        "width": {
+            "min": 1,
+            "max": 2048,
+            "step": 1,
+            "default": 2048
+        },
+        "height": {
+            "min": 1,
+            "max": 2048,
+            "step": 1,
+            "default": 2048
+        },
+        "offset_x": {
+            "min": 0,
+            "max": 2048,
+            "step": 1,
+            "default": 0
+        },
+        "offset_y": {
+            "min": 0,
+            "max": 2048,
+            "step": 1,
+            "default": 0
+        }
+    }
+} 
