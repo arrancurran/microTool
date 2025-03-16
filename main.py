@@ -36,7 +36,10 @@ class TweezerCam(ui_layout, Camera):
 
     def set_exposure(self, value):
         self.update_exposure(value)
-        self.exposure_label.setText(f"Exposure: {value} µs")
+        if value >= 1000:
+            self.exposure_label.setText(f"Exposure: {value/1000} ms")
+        else:
+            self.exposure_label.setText(f"Exposure: {value} µs")
         # self.send_update_status_bar(self)
         self.update_status_bar()
         
