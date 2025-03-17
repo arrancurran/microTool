@@ -62,65 +62,65 @@ class CameraControl:
         """Initialize the camera object."""
         if self.camera is None:
             self.camera = xiapi.Camera()
-            print("Camera initialized.")
+            print("CameraControl.initialize_camera(): Camera initialized.")
         else:
-            print("Camera already initialized.")
+            print("CameraControl.initialize_camera(): Camera already initialized.")
         # return self.camera
 
     def open_camera(self):
         if self.camera: 
             self.camera.open_device()
-            print("Camera opened.")
+            print("CameraControl.open_camera(): Camera opened.")
         else:
-            print("Camera not initialized.")
+            print("CameraControl.open_camera(): Camera not initialized.")
 
     def ImageObject(self):
         if self.image is None:
             self.image = xiapi.Image()
-            print("Image initialized.")
+            print("CameraControl.ImageObject(): Image initialized.")
         else:
-            print("Image already initialized.")
+            print("CameraControl.ImageObject(): Image already initialized.")
 
     def start(self):
         if self.camera:
             self.camera.start_acquisition()
-            print("Camera acquisition started.")
+            print("CameraControl.start(): Camera acquisition started.")
         else:
-            print("Camera not initialized.")
+            print("CameraControl.start(): Camera not initialized.")
     
     def get_image(self):
         if self.image:
             self.camera.get_image(self.image)
             return self.image
         else:
-            print("Image not initialized.")
+            print("CameraControl.get_image(): Image not initialized.")
 
     def get_image_data(self):
         if self.image:
             return self.image.get_image_data_numpy()
         else:
-            print("Image not initialized.")
+            print("CameraControl.get_image_data(): Image not initialized.")
     
     def get_image_timestamp(self):
         if self.image:
             return self.image.tsUSec
         else:
-            print("Image not initialized.")
+            print("CameraControl.get_image_timestamp(): Image not initialized.")
     
     def stop(self):
         if self.camera:
             self.camera.stop_acquisition()
-            print("Camera acquisition stopped.")
+            print("CameraControl.stop(): Camera acquisition stopped.")
         else:
-            print("Camera not initialized.")
+            print("CameraControl.stop(): Camera not initialized.")
 
     def close(self):
         if self.camera:
             self.camera.close_device()
-            print("Camera closed.")
+            print("CameraControl.close(): Camera closed.")
             self.camera = None  # Reset the camera instance
         else:
-            print("Camera not initialized.")
+            print("CameraControl.close(): Camera not initialized.")
   
 
 class CameraSequences():
