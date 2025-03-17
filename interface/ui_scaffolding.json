@@ -1,30 +1,5 @@
 {
-    "window": {
-        "initial_width": 1200,
-        "initial_height": 800,
-        "title": "ColloidCam",
-        "background_color": "#2b2b2b",
-        "margins": {
-            "left": 0,
-            "top": 0,
-            "right": 0,
-            "bottom": 0
-        },
-        "spacing": 0
-    },
-    "container": {
-        "margins": {
-            "left": 0,
-            "top": 0,
-            "right": 0,
-            "bottom": 0
-        },
-        "spacing": 0
-    },
     "toolbar": {
-        "height": 32,
-        "icon_size": 19,
-        "background_color": "#333",
         "icons": {
             "start_stream": "fa5s.play",
             "stop_stream": "fa5s.stop",
@@ -39,9 +14,6 @@
             "framerate": "@ 0 Hz",
             "image_size_on_disk": "0.00 MB",
             "image_size_on_disk_bandwidth": "0.00 MB/s"
-        },
-        "styles": {
-            "padding-right": "10px"
         }
     },
     "image_display": {
