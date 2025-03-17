@@ -6,7 +6,7 @@ from PyQt6.QtCore import Qt, QTimer, QRect, QPoint
 
 # Import the custom modules
 import utils
-from interface.ui_scaffolding import ui_layout
+from interface.ui import ui_layout
 from instruments.camera import Camera
 
 # UI class that inherits from QMainWindow
