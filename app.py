@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QApplication
 from interface.ui import ui
 from interface.ui_methods import UIMethods
 
-from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences  
+from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences
 from acquisitions.stream_camera import StreamCamera
 
 class CamTool():
@@ -32,12 +32,16 @@ class CamTool():
     
     """Clean up resources before the application closes."""
     def cleanup(self, event):
-        if hasattr(self, 'stream_camera'):
-            self.stream_camera.stop_stream()
-        if hasattr(self, 'camera_sequences'):
-            self.camera_sequences.disconnect_camera()
-        event.accept()
-        print("CamTool.cleanup(): Resources cleaned up.")
+        try:
+            if hasattr(self, 'stream_camera'):
+                self.stream_camera.cleanup()
+            if hasattr(self, 'camera_sequences'):
+                self.camera_sequences.disconnect_camera()
+            event.accept()
+            print("CamTool.cleanup(): Resources cleaned up.")
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+            event.accept()
     
     def run(self):
         self.window.show()
@@ -46,12 +50,15 @@ class CamTool():
         sys.exit(self.app.exec())
         
     def __del__(self):
-        # Keep the __del__ method as a backup, but the closeEvent handler is the primary cleanup method
-        if hasattr(self, 'stream_camera'):
-            self.stream_camera.stop_stream()
-        if hasattr(self, 'camera_sequences'):
-            self.camera_sequences.disconnect_camera()
-        print("CamTool.__del__(): Resources cleaned up.")
+        """Backup cleanup method, but closeEvent handler is the primary cleanup method"""
+        try:
+            if hasattr(self, 'stream_camera'):
+                self.stream_camera.cleanup()
+            if hasattr(self, 'camera_sequences'):
+                self.camera_sequences.disconnect_camera()
+            print("CamTool.__del__(): Resources cleaned up.")
+        except Exception as e:
+            print(f"Error during __del__ cleanup: {e}")
 
 if __name__ == "__main__":
     app = CamTool()

@@ -26,7 +26,7 @@ Dependencies:
 - commands.json for camera parameter definitions
 """
 
-import json, threading
+import json
 from ximea import xiapi
 
 # Load the JSON file

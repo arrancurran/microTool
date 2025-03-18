@@ -27,5 +27,4 @@ class UIMethods(QObject):
         self.window.image_container.setPixmap(scaled_image)
 
         # Update the histogram 
-
         calc_img_hist(self.window, np_image_data)

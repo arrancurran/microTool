@@ -75,7 +75,7 @@ class ui(QMainWindow):
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
         self.exposure_label = QLabel()
         self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-       
+        
         """Add Widgets to Right Column"""
         right_layout.addWidget(self.hist_display)
         right_layout.addWidget(self.exposure_slider)
