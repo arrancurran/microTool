@@ -169,14 +169,7 @@ class CameraSequences():
 
 class CameraSettings:  
     """
-    CameraSettings class provides configuration methods for Ximea cameras.
-
-    Methods:
-        __init__(camera_control): Takes a CameraControl instance to manage camera settings
-        call_camera_command(cmd_name, method, value=None): Executes camera configuration commands
-            - cmd_name: Friendly name of the command (e.g. "exposure", "exposure_min")
-            - method: "get" to read current value, "set" to change value
-            - value: New value when using "set" method (optional)
+    CameraSettings class provides configuration methods for a camera.
 
     The class uses commands.json to map friendly parameter names to the actual
     camera API commands. It dynamically calls the appropriate get/set methods
