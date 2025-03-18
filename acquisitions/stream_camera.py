@@ -53,6 +53,7 @@ class StreamCamera(QObject):
             self.camera_thread = CameraThread(self.camera_control)
             self.camera_thread.frame_ready.connect(self._handle_frame)
             self.camera_thread.start()
+            self.camera_control.start_camera()
             print("StreamCamera.start_stream(): Camera stream started.")
 
     def _handle_frame(self, image_data):
@@ -66,6 +67,7 @@ class StreamCamera(QObject):
         try:
             if hasattr(self, 'camera_thread') and self.camera_thread is not None:
                 if self.camera_thread.isRunning():
+                    self.camera_control.stop_camera()
                     self.camera_thread.stop()
                 self.camera_thread = None
             print("StreamCamera.stop_stream(): Camera stream stopped.")

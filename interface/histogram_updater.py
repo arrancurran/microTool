@@ -1,5 +1,4 @@
-import numpy as np
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject
 
 class HistogramUpdater(QObject):
     """

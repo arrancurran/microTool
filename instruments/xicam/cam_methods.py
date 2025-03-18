@@ -65,7 +65,6 @@ class CameraControl:
             print("CameraControl.initialize_camera(): Camera initialized.")
         else:
             print("CameraControl.initialize_camera(): Camera already initialized.")
-        # return self.camera
 
     def open_camera(self):
         if self.camera: 
@@ -81,12 +80,12 @@ class CameraControl:
         else:
             print("CameraControl.ImageObject(): Image already initialized.")
 
-    def start(self):
+    def start_camera(self):
         if self.camera:
             self.camera.start_acquisition()
-            print("CameraControl.start(): Camera acquisition started.")
+            print("CameraControl.start_camera(): Camera acquisition started.")
         else:
-            print("CameraControl.start(): Camera not initialized.")
+            print("CameraControl.start_camera(): Camera not initialized.")
     
     def get_image(self):
         if self.image:
@@ -107,12 +106,12 @@ class CameraControl:
         else:
             print("CameraControl.get_image_timestamp(): Image not initialized.")
     
-    def stop(self):
+    def stop_camera(self):
         if self.camera:
             self.camera.stop_acquisition()
-            print("CameraControl.stop(): Camera acquisition stopped.")
+            print("CameraControl.stop_camera(): Camera acquisition stopped.")
         else:
-            print("CameraControl.stop(): Camera not initialized.")
+            print("CameraControl.stop_camera(): Camera not initialized.")
 
     def close(self):
         if self.camera:
@@ -150,32 +149,16 @@ class CameraSequences():
     def __init__(self, camera_control):
         """Takes a CameraControl instance and uses its camera."""
         self.camera_control = camera_control
-        # self.stop_event = threading.Event()  # Create an event object
 
     def connect_camera(self):
         self.camera_control.initialize_camera()
         self.camera_control.open_camera()
-        self.camera_control.start()
+        # self.camera_control.start()
         self.camera_control.ImageObject()
-
+    
     def disconnect_camera(self):
-        self.camera_control.stop()
+        # self.camera_control.stop()
         self.camera_control.close()
-
-    # def start_stream(self):
-    #     self.stop_event.clear()  # Clear the event to start the stream
-    #     self.stream_camera()
-        
-    # def stop_stream(self):
-    #     self.stop_event.set()  # Set the event to stop the stream
-    #     print("Stream stopped.")  # Debug print to confirm the method is called
-
-    # def stream_camera(self):
-    #     while not self.stop_event.is_set():  # Check if the event is set
-    #         self.camera_control.get_image()
-    #         image_data = self.camera_control.get_image_data()
-    #         print(image_data)
-    #     print("Stream loop ended.")  # Debug print to confirm the loop has ended
 
     def acquire_time_series(self, num_images):
         for i in range(num_images):
