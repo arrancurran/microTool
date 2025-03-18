@@ -34,11 +34,12 @@ def test_stream():
     # Set exposure
     print("Setting camera exposure...")
     camera_settings.call_camera_command("exposure", "set", 400)
+    camera_settings.call_camera_command("exposure_min", "get")
 
     # Set target frame rate
     target_fps = 60
     frame_interval = 1.0 / target_fps
-
+    camera_ctrl.start_camera()
     print("Stream started. Press 'q' to quit.")
     last_frame_time = 0
     frame_count = 0
@@ -75,6 +76,7 @@ def test_stream():
     finally:
         # Clean up
         print("Stopping camera stream...")
+        camera_ctrl.stop_camera()
         camera_sequences.disconnect_camera()
         cv2.destroyAllWindows()
         print("Cleanup complete")

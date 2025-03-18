@@ -174,7 +174,7 @@ class CameraSettings:
     Methods:
         __init__(camera_control): Takes a CameraControl instance to manage camera settings
         call_camera_command(cmd_name, method, value=None): Executes camera configuration commands
-            - cmd_name: Name of the command (e.g. "exposure", "gain")
+            - cmd_name: Friendly name of the command (e.g. "exposure", "exposure_min")
             - method: "get" to read current value, "set" to change value
             - value: New value when using "set" method (optional)
 
@@ -186,7 +186,7 @@ class CameraSettings:
         ctrl = CameraControl()
         settings = CameraSettings(ctrl)
         settings.call_camera_command("exposure", "set", 10000)  # Set 10ms exposure
-        current_exp = settings.call_camera_command("exposure", "get")  # Read exposure
+        current_exp = settings.call_camera_command("exposure_min", "get")  # Read minimum exposure
 
     Returns None if camera is not initialized or command fails.
     Prints error message explaining the failure reason.
@@ -194,27 +194,44 @@ class CameraSettings:
     def __init__(self, camera_control):
         """Takes a CameraControl instance and uses its camera."""
         self.camera_control = camera_control
+        # Create lookup dictionaries for O(1) command access
+        self.set_commands = {cmd['cmd']: cmd for cmd in commands['set']}
+        self.get_commands = {cmd['cmd']: cmd for cmd in commands['get']}
+        
+        # Create reverse lookup dictionaries by friendly names
+        self.set_commands_by_name = {cmd['name']: cmd for cmd in commands['set']}
+        self.get_commands_by_name = {cmd['name']: cmd for cmd in commands['get']}
 
-    def call_camera_command(self, cmd_name, method, value=None):
+    def call_camera_command(self, friendly_name, method, value=None):
         if not self.camera_control.camera:
             print("Camera not initialized.")
             return None
 
-        for cmd in commands[method]:
-            if cmd['cmd'] == cmd_name:
-                method_name = f"{method}_{cmd_name}"
-                if not hasattr(self.camera_control.camera, method_name):
-                    print(f"Method {method_name} not found in xiapi.Camera")
-                    return None
+        # Look up command by friendly name in the appropriate dictionary
+        cmd_dict = self.set_commands_by_name if method == "set" else self.get_commands_by_name
+        if friendly_name not in cmd_dict:
+            print(f"Command with friendly name '{friendly_name}' not found in {method} commands.")
+            return None
 
-                camera_method = getattr(self.camera_control.camera, method_name)
-                if method == "set" and value is not None:
-                    return camera_method(value)
-                elif method == "get":
-                    return camera_method()
-                else:
-                    print(f"Invalid method or missing value for {method_name}")
-                    return None
+        # Get the original command name for the API call
+        cmd_info = cmd_dict[friendly_name]
+        api_cmd_name = cmd_info['cmd']
+        method_name = f"{method}_{api_cmd_name}"
+        
+        if not hasattr(self.camera_control.camera, method_name):
+            print(f"Method {method_name} not found in xiapi.Camera")
+            return None
 
-        print(f"Command {cmd_name} not found in {method} commands.")
-        return None
+        # Check for invalid parameter combinations
+        if method == "get" and value is not None:
+            print(f"Get command '{friendly_name}' should not have a value parameter")
+            return None
+        elif method == "set" and value is None:
+            print(f"Set command '{friendly_name}' requires a value parameter")
+            return None
+
+        camera_method = getattr(self.camera_control.camera, method_name)
+        if method == "set":
+            return camera_method(value)
+        else:  # method == "get"
+            return camera_method()
