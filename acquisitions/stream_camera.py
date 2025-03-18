@@ -1,6 +1,5 @@
 import threading, queue
-from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences
-import numpy as np
+from instruments.xicam.cam_methods import CameraControl
 from PyQt6.QtCore import QObject, pyqtSignal
 
 
@@ -15,7 +14,7 @@ class StreamCamera(QObject):
         super().__init__()
         self.camera_control = camera_control
         self.camera = None
-        self.streaming_queue = queue.Queue(maxsize=10)  # Buffer for frames
+        self.streaming_queue = queue.Queue(maxsize=1)  # Buffer for frames
         self.streaming = threading.Event()  # Controls start/stop of streaming
         self.stream_thread = None  # Thread for capturing frames
 

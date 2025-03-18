@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
 
 def calc_img_hist(self, image_data):
     if len(image_data.shape) == 3:
