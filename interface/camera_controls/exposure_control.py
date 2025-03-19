@@ -9,6 +9,10 @@ from .base_control import NumericCameraControl
 class ExposureControl(NumericCameraControl):
     """Control for camera exposure settings."""
     
+    # Maximum safe exposure time in microseconds (50ms)
+    # Higher values can cause UI lag due to frame capture delays
+    MAX_SAFE_EXPOSURE_US = 50000
+    
     def __init__(self, camera_control, window):
         print("Initializing ExposureControl")  # Debug print
         super().__init__(
@@ -43,9 +47,11 @@ class ExposureControl(NumericCameraControl):
             
             # Convert float values to integers for the slider
             min_val = int(round(settings['min']))
-            max_val = int(round(settings['max']))
-            current = int(round(settings['current']))
+            # Use the minimum between camera's max exposure and our safe limit
+            max_val = min(int(round(settings['max'])), self.MAX_SAFE_EXPOSURE_US)
+            current = min(int(round(settings['current'])), max_val)
             
+            print(f"Using max exposure value: {max_val} (camera max: {settings['max']}, safe limit: {self.MAX_SAFE_EXPOSURE_US})")
             print(f"Converted values for slider - min: {min_val}, max: {max_val}, current: {current}")  # Debug print
             
             # Configure the slider
