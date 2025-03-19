@@ -28,8 +28,6 @@ from ximea import xiapi
 from queue import Queue
 from threading import Lock
 import threading
-import time
-
 class CameraControl:
     """
     CameraControl class provides core camera operations for Ximea cameras.
