@@ -67,10 +67,10 @@ class StreamCamera(QObject):
         try:
             if hasattr(self, 'camera_thread') and self.camera_thread is not None:
                 if self.camera_thread.isRunning():
-                    self.camera_control.stop_camera()
                     self.camera_thread.stop()
                 self.camera_thread = None
             print("StreamCamera.stop_stream(): Camera stream stopped.")
+            self.camera_control.stop_camera()
         except RuntimeError:
             # Ignore errors if the thread has already been deleted
             pass
