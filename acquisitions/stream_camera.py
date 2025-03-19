@@ -9,7 +9,7 @@ class CameraThread(QThread):
         super().__init__()
         self.camera_control = camera_control
         self.running = True
-        self.frame_interval = 16  # ~60 Hz (1000ms/60 ≈ 16.67ms)
+        self.frame_interval = 20  # ~50 Hz (1000ms/5 ≈ 20ms)
         
     def run(self):
         """Main thread loop"""
