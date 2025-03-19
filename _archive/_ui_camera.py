@@ -1,5 +1,5 @@
 
-from instruments.camera import Camera
+from _archive.camera import Camera
 
 class ui_camera(Camera):
     def __init__(self):
