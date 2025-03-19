@@ -1,8 +1,8 @@
-from PyQt6.QtCore import Qt, QObject, QTimer
+from PyQt6.QtCore import Qt, QObject
 from PyQt6.QtGui import QImage, QPixmap
-import cv2
 
 from utils import calc_img_hist
+from .camera_controls.control_manager import CameraControlManager
 
 class UIMethods(QObject):
     
@@ -13,17 +13,23 @@ class UIMethods(QObject):
         self.stream_camera = stream_camera
         self.camera_control = self.stream_camera.camera_control
         
-        # Setup debounce timer for exposure changes
-        self.exposure_timer = QTimer()
-        self.exposure_timer.setSingleShot(True)
-        self.exposure_timer.timeout.connect(self._apply_exposure_change)
-        self.pending_exposure = None
+        # Initialize camera controls
+        print("Initializing camera controls in UIMethods...")  # Debug print
+        self.control_manager = CameraControlManager(self.camera_control, self.window)
+        self.control_manager.initialize_controls()
         
-        # Connect UI elements to methods
-        self.window.exposure_slider.valueChanged.connect(self.handle_exposure_change)
+        # Verify exposure control was initialized
+        exposure_control = self.control_manager.get_control('exposure')
+        if exposure_control:
+            print("Exposure control initialized successfully")  # Debug print
+            # Test getting current exposure
+            current = self.camera_control.call_camera_command("exposure", "get")
+            print(f"Current exposure: {current}")  # Debug print
+        else:
+            print("Warning: Exposure control not initialized")  # Debug print
     
-    """Get the latest frame from the stream and update the UI image display."""
     def update_ui_image(self):
+        """Get the latest frame from the stream and update the UI image display."""
         np_image_data = self.stream_camera.get_latest_frame()
         if np_image_data is None:
             return
@@ -40,25 +46,8 @@ class UIMethods(QObject):
 
         # Update the histogram 
         calc_img_hist(self.window, np_image_data)
-
-    def handle_exposure_change(self, value):
-        """Queue exposure change with debouncing."""
-        # Update the exposure label immediately for responsive UI
-        if hasattr(self.window, 'exposure_label'):
-            self.window.exposure_label.setText(f"Exposure: {value} ms")
-        
-        # Store the pending value and restart the timer
-        self.pending_exposure = value
-        self.exposure_timer.start(20)  # 20ms debounce delay
     
-    def _apply_exposure_change(self):
-        """Actually apply the exposure change after debouncing."""
-        if self.pending_exposure is not None:
-            try:
-                print(f"Setting exposure to {self.pending_exposure}")
-                # Set the new exposure value using our camera control instance
-                self.camera_control.call_camera_command("exposure", "set", self.pending_exposure)
-                self.pending_exposure = None
-            except Exception as e:
-                print(f"Error setting exposure: {str(e)}")
+    def cleanup(self):
+        """Clean up resources."""
+        self.control_manager.cleanup()
 
