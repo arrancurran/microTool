@@ -1,11 +1,29 @@
-# See https://www.ximea.com/software-downloads for ximea api
-#  This project was developed with macOS ARM xiAPI LTS V4.28.00
-# The xiAPI is not included in pip, so you must download it from the link above
-# and install it manually
-# For everything else,pip install -r requirements.txt
-opencv-python==4.5.5.64
-Pillow==9.0.1
-qtawesome==1.1.0
-PyQt6==6.2.2
-matplotlib==3.5.1
-numpy==1.23.5
+# ColloidCam Requirements
+# ------------------
+# To install the Python dependencies:
+#   pip install -r requirements.txt
+#
+# Note: The Ximea camera API (xiAPI) is required but not available via pip.
+# To install xiAPI:
+# 1. Visit https://www.ximea.com/support/wiki/apis/XIMEA_API_Software_Package
+# 2. Download the appropriate version for your OS
+# 3. Follow the installation instructions for your platform
+#    - For macOS ARM: Download xiAPI LTS V4.28.00 or later
+#    - For Linux: Use package manager or follow manual installation
+#    - For Windows: Use the provided installer
+#
+# Development was done with:
+# - Python 3.8+
+# - macOS ARM xiAPI LTS V4.28.00
+
+# Core Dependencies
+PyQt6>=6.2.2         # UI framework
+opencv-python>=4.8.0  # Image processing
+numpy>=1.23.5        # Numerical operations
+matplotlib>=3.5.1    # Plotting and visualization
+qtawesome>=1.1.0     # UI icons
+
+# Optional Development Dependencies
+# pytest>=7.0.0        # Testing framework (optional, for running tests)
+# black>=22.0.0        # Code formatting (optional, for development)
+# flake8>=4.0.0        # Code linting (optional, for development)
