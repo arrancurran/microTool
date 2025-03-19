@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
 import queue
+import time
 
 class CameraThread(QThread):
     """Thread for capturing camera frames"""
@@ -9,30 +10,29 @@ class CameraThread(QThread):
         super().__init__()
         self.camera_control = camera_control
         self.running = True
-        self.frame_interval = 20  # ~50 Hz (1000ms/5 ≈ 20ms)
+        self.frame_interval = 16  # ~60 Hz (1000ms/60 ≈ 16.67ms)
         
     def run(self):
         """Main thread loop"""
-        timer = QTimer()
-        timer.setInterval(self.frame_interval)
-        timer.timeout.connect(self._capture_frame)
-        timer.start()
-        
-        # Start the event loop
-        self.exec()
-        
-    def _capture_frame(self):
-        """Capture a single frame and emit it"""
-        if self.running:
-            self.camera_control.get_image()
-            image_data = self.camera_control.get_image_data()
-            if image_data is not None:
-                self.frame_ready.emit(image_data)
+        while self.running:
+            try:
+                # Get image from camera
+                self.camera_control.get_image()
+                image_data = self.camera_control.get_image_data()
+                
+                if image_data is not None:
+                    self.frame_ready.emit(image_data)
+                
+                # Sleep for the remaining time to maintain frame rate
+                time.sleep(max(0, self.frame_interval / 1000.0))
+                
+            except Exception as e:
+                print(f"Error in camera thread: {str(e)}")
+                time.sleep(0.1)  # Sleep briefly on error to prevent tight loop
     
     def stop(self):
         """Stop the thread"""
         self.running = False
-        self.quit()
         self.wait()
 
 class StreamCamera(QObject):
@@ -52,8 +52,8 @@ class StreamCamera(QObject):
         if self.camera_thread is None or not self.camera_thread.isRunning():
             self.camera_thread = CameraThread(self.camera_control)
             self.camera_thread.frame_ready.connect(self._handle_frame)
-            self.camera_thread.start()
             self.camera_control.start_camera()
+            self.camera_thread.start()
             print("StreamCamera.start_stream(): Camera stream started.")
 
     def _handle_frame(self, image_data):
