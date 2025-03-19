@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QApplication
 from interface.ui import ui
 from interface.ui_methods import UIMethods
 
-from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences
+from instruments.xicam.cam_methods import CameraControl, CameraSequences
 from acquisitions.stream_camera import StreamCamera
 
 class CamTool():
@@ -14,7 +14,6 @@ class CamTool():
        
         """Camera Control"""
         self.camera_control = CameraControl()
-        self.camera_settings = CameraSettings(self.camera_control)
         self.camera_sequences = CameraSequences(self.camera_control)
         self.camera_sequences.connect_camera()
         self.stream_camera = StreamCamera(self.camera_control)

@@ -8,7 +8,7 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences
+from instruments.xicam.cam_methods import CameraControl, CameraSequences
 import cv2
 
 def test_camera():
@@ -18,7 +18,6 @@ def test_camera():
         # Create camera objects
         print("Creating camera objects...")
         camera_ctrl = CameraControl()
-        camera_settings = CameraSettings(camera_ctrl)
         camera_sequences = CameraSequences(camera_ctrl)
         
         # Connect to camera

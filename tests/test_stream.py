@@ -15,7 +15,7 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from instruments.xicam.cam_methods import CameraControl, CameraSettings, CameraSequences
+from instruments.xicam.cam_methods import CameraControl, CameraSequences
 import cv2
 import time
 
@@ -25,7 +25,6 @@ def test_stream():
     # Connect to the camera
     print("Creating camera control objects...")
     camera_ctrl = CameraControl()
-    camera_settings = CameraSettings(camera_ctrl)
     camera_sequences = CameraSequences(camera_ctrl)
     
     print("Connecting to camera...")
@@ -33,8 +32,8 @@ def test_stream():
 
     # Set exposure
     print("Setting camera exposure...")
-    camera_settings.call_camera_command("exposure", "set", 400)
-    camera_settings.call_camera_command("exposure_min", "get")
+    camera_ctrl.call_camera_command("exposure", "set", 400)
+    camera_ctrl.call_camera_command("exposure_min", "get")
 
     # Set target frame rate
     target_fps = 60
