@@ -134,3 +134,10 @@ cython_debug/
 
 .cursorignorerules
 
+*.h5
+
+*.hdf5
+
+*.hdf
+
+*.hdf5
