@@ -2,21 +2,11 @@
 Provides camera control and settings management for Ximea cameras. Here we define methods that speak directly to the camera using the XiAPI.
 For a different camera, we would need to rewrite this module to speak to the new camera.
 
-CameraControl: Handles core camera operations like:
-- Initializing/closing the camera connection
-- Starting/stopping image acquisition 
-- Capturing individual images and accessing image data
-- Managing camera configuration parameters through command parsing from commands.json
+CameraControl: Handles core camera operations and camera parameters through command parsing from commands.json
 
-CameraSequences: (Defined elsewhere) Implements higher-level acquisition patterns like:
+CameraSequences: Implements higher-level acquisition patterns like:
 - Time series capture
 - Continuous streaming
-
-Usage:
-This module is primarily used by app.py which:
-1. Creates instances of these classes
-2. Uses them to control camera operations
-3. Implements the main application workflow
 
 Dependencies:
 - ximea.xiapi for low-level camera interface
@@ -26,12 +16,10 @@ Dependencies:
 import json
 from ximea import xiapi
 from queue import Queue
-from threading import Lock
-import threading
+from threading import Lock, Thread
+
 class CameraControl:
     """
-    CameraControl class provides core camera operations for Ximea cameras.
-
     Methods:
         __init__(): Initializes camera connection using xiapi
         ImageObject(): Creates image object to store camera data
@@ -45,7 +33,7 @@ class CameraControl:
 
     The class uses the ximea.xiapi library to interface directly with Ximea cameras.
     Images are stored in xiapi.Image objects which contain both pixel data and metadata.
-    See https://www.ximea.com/support/wiki/apis/XiAPI_Python_Manual#xiApiPython_Image-XI_IMG
+    See https://www.ximea.com/support/wiki/apis/XiAPI_Python_Manual
 
     Example usage:
         ctrl = CameraControl()
@@ -82,7 +70,7 @@ class CameraControl:
         """Start the command processing thread."""
         if self.command_thread is None:
             self.running = True
-            self.command_thread = threading.Thread(target=self._process_commands)
+            self.command_thread = Thread(target=self._process_commands)
             self.command_thread.daemon = True
             self.command_thread.start()
     
@@ -194,7 +182,6 @@ class CameraControl:
                 print("CameraControl.initialize_camera(): Commands loaded.")
                 self.start_command_thread()
                 print("CameraControl.initialize_camera(): Command thread started.")
-                print("CameraControl.initialize_camera(): Camera initialized.")
         else:
             print("CameraControl.initialize_camera(): Camera already initialized.")
 
@@ -204,14 +191,14 @@ class CameraControl:
                 self.camera.open_device()
                 print("CameraControl.open_camera(): Camera opened.")
         else:
-            print("CameraControl.open_camera(): Camera not initialized.")
+            print("CameraControl.open_camera(): Camera not opened.")
 
     def ImageObject(self):
         if self.image is None:
             self.image = xiapi.Image()
-            print("CameraControl.ImageObject(): Image initialized.")
+            print("CameraControl.ImageObject(): Image object created.")
         else:
-            print("CameraControl.ImageObject(): Image already initialized.")
+            print("CameraControl.ImageObject(): Image object already created.")
 
     def start_camera(self):
         if self.camera:
@@ -219,27 +206,26 @@ class CameraControl:
                 self.camera.start_acquisition()
                 print("CameraControl.start_camera(): Camera acquisition started.")
         else:
-            print("CameraControl.start_camera(): Camera not initialized.")
+            print("CameraControl.start_camera(): Camera failed to start acquisition.")
     
     def get_image(self):
         if self.image:
             with self.camera_lock:
-                self.camera.get_image(self.image)
-                return self.image
+                return self.camera.get_image(self.image)
         else:
-            print("CameraControl.get_image(): Image not initialized.")
+            print("CameraControl.get_image(): Image object doesn't exist.")
 
     def get_image_data(self):
         if self.image:
             return self.image.get_image_data_numpy()
         else:
-            print("CameraControl.get_image_data(): Image not initialized.")
+            print("CameraControl.get_image_data(): Failed to get image numpy data.")
     
     def get_image_timestamp(self):
         if self.image:
             return self.image.tsUSec
         else:
-            print("CameraControl.get_image_timestamp(): Image not initialized.")
+            print("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
     
     def stop_camera(self):
         if self.camera:
@@ -247,7 +233,7 @@ class CameraControl:
                 self.camera.stop_acquisition()
                 print("CameraControl.stop_camera(): Camera acquisition stopped.")
         else:
-            print("CameraControl.stop_camera(): Camera not initialized.")
+            print("CameraControl.stop_camera(): Camera failed to stop acquisition.")
 
     def close(self):
         self.stop_command_thread()
@@ -257,7 +243,7 @@ class CameraControl:
                 print("CameraControl.close(): Camera closed.")
                 self.camera = None
         else:
-            print("CameraControl.close(): Camera not initialized.")
+            print("CameraControl.close(): Camera failed to close.")
 
 class CameraSequences():
     """
@@ -270,12 +256,8 @@ class CameraSequences():
         stream_camera(): Continuously captures and displays images in real-time
         acquire_time_series(num_images): Captures a specified number of sequential images
 
-    The class uses a CameraControl instance to:
-    - Initialize and manage camera connections
-    - Stream live camera feed
-    - Capture sequences of images
-    - Handle image acquisition and data retrieval
-
+    The class uses a CameraControl instance.
+    
     Example usage:
         ctrl = CameraControl()
         sequences = CameraSequences(ctrl)
@@ -297,6 +279,4 @@ class CameraSequences():
 
     def acquire_time_series(self, num_images):
         for i in range(num_images):
-            self.camera_control.get_image()
-            image_data = self.camera_control.get_image_data()
-            print(image_data)
+            return self.camera_control.get_image()

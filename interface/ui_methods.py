@@ -1,6 +1,5 @@
 from PyQt6.QtCore import Qt, QObject
 from PyQt6.QtGui import QImage, QPixmap
-
 from utils import calc_img_hist
 from .camera_controls.control_manager import CameraControlManager
 

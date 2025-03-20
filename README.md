@@ -15,11 +15,11 @@ ColloidCam is a Python application for interfacing with Ximea cameras, providing
 
 ```
 ColloidCam/
-├── app.py                 # Main application entry point
-├── acquisitions/          # Image acquisition code
-│   └── stream_camera.py   # Camera streaming functionality
+├── app.py                          # Main application entry point
+├── acquisitions/                # Image acquisition code
+│   └── stream_camera.py  # Camera streaming functionality
 │
-├── interface/            # UI-related code
+├── interface/             # UI-related code
 │   ├── ui.py            # Main UI layout
 │   ├── ui_methods.py    # UI event handlers
 │   └── camera_controls/ # Camera control components
