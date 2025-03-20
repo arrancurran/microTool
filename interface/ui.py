@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QStyle
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 # Run qta-browser from terminal to see all available icons
@@ -115,13 +115,26 @@ class ui(QMainWindow):
             self.status_bar.addWidget(label)
             label.setText(label_text)
 
-        """Add Actions to Toolbar"""
-        # for action, icon_path in self.ui_scaffolding['toolbar']['icons'].items():
-        #     self.action = QAction(qta.icon(icon_path), action, self)
-        #     self.toolbar.addAction(self.action)
-            
-        self.start_stream = QAction(qta.icon("fa5s.play"), "Start Stream", self)
-        self.stop_stream = QAction(qta.icon("fa5s.stop"), "Stop Stream", self)
-        toolbar.addAction(self.start_stream)
-        toolbar.addAction(self.stop_stream)
+        # """Add Actions to Toolbar"""
+        # self.start_stream = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay), "Start Stream", self)
+        # self.stop_stream = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop), "Stop Stream", self)
+        # self.snapshot = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "Take Snapshot", self)
+        # self.start_recording = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaRecord), "Record", self)
+        
+        # toolbar.addAction(self.start_stream)
+        # toolbar.addAction(self.stop_stream)
+        # toolbar.addAction(self.snapshot)
+        # toolbar.addAction(self.start_recording)
 
+
+
+
+        for action, icon_path in self.ui_scaffolding['toolbar']['icons'].items():
+            action_obj = QAction(qta.icon(icon_path), action, self)
+            toolbar.addAction(action_obj)
+            setattr(self, action, action_obj)
+        # self.start_stream = QAction(qta.icon("fa5s.play"), "Start Stream", self)
+        # self.stop_stream = QAction(qta.icon("fa5s.stop"), "Stop Stream", self)
+
+        # toolbar.addAction(self.start_stream)
+        # toolbar.addAction(self.stop_stream)
