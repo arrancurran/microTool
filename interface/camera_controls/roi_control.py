@@ -1,21 +1,19 @@
 """
 ROI (Region of Interest) controls for the camera.
 """
-from PyQt6.QtWidgets import QSpinBox
 from .base_control import NumericCameraControl
 
 class ROIControl(NumericCameraControl):
     """Control for camera ROI settings (width, height, offset_x, offset_y)."""
     
     def __init__(self, camera_control, window):
-        print("Initializing ROIControl")  # Debug print
         super().__init__(
             camera_control=camera_control,
             window=window,
             command_name="roi",  # Not actually used, we handle commands directly
             display_name="ROI"
         )
-        # Store references to spinboxes
+        # Store references to spinboxes and their corresponding camera commands
         self.controls = {
             'width': (window.roi_width, 'width'),
             'height': (window.roi_height, 'height'),
@@ -23,63 +21,46 @@ class ROIControl(NumericCameraControl):
             'offset_y': (window.roi_offset_y, 'offset_y')
         }
         
-        # Store max width/height for offset calculations
-        self.max_width = None
-        self.max_height = None
+        # Cache for max dimensions
+        self.max_dimensions = None
         
     def setup_ui(self) -> bool:
         """Set up the ROI UI elements."""
-        print("Setting up ROI controls")  # Debug print
-        
-        # Check if UI elements exist
-        for name, (spinbox, _) in self.controls.items():
-            if not hasattr(self.window, f'roi_{name}'):
-                print(f"Error: roi_{name} not found in window")
-                return False
-        
         try:
-            # Get max width/height first
-            self.max_width = int(self.camera_control.call_camera_command("width_max", "get"))
-            self.max_height = int(self.camera_control.call_camera_command("height_max", "get"))
+            # Get max dimensions first
+            self.max_dimensions = {
+                'width': int(self.camera_control.call_camera_command("width_max", "get")),
+                'height': int(self.camera_control.call_camera_command("height_max", "get"))
+            }
             
             # Setup each control
             for name, (spinbox, cmd_name) in self.controls.items():
-                # Get min, max, increment, and current values
+                # Get min, max, increment values
                 min_val = int(self.camera_control.call_camera_command(f"{cmd_name}_min", "get"))
                 max_val = int(self.camera_control.call_camera_command(f"{cmd_name}_max", "get"))
                 increment = int(self.camera_control.call_camera_command(f"{cmd_name}_inc", "get"))
                 current = int(self.camera_control.call_camera_command(cmd_name, "get"))
-                
-                print(f"Got {name} settings - min: {min_val}, max: {max_val}, increment: {increment}, current: {current}")
                 
                 # Configure spinbox
                 spinbox.setMinimum(min_val)
                 spinbox.setMaximum(max_val)
                 spinbox.setSingleStep(increment)
                 
-                # Ensure current value is within bounds and aligned to increment
-                current = max(min_val, min(max_val, current))
-                current = (current // increment) * increment
+                # Ensure current value is valid
+                current = self._validate_value(name, current, increment)
                 
-                # Disconnect any existing connections
+                # Connect signal
                 try:
                     spinbox.valueChanged.disconnect()
                 except Exception:
                     pass
                 
-                # Connect new signal - special handling for width/height
-                if name in ['width', 'height']:
-                    spinbox.valueChanged.connect(
-                        lambda value, cmd=cmd_name, dim=name: self.handle_dimension_change(dim, value)
-                    )
-                else:
-                    spinbox.valueChanged.connect(
-                        lambda value, cmd=cmd_name: self.handle_roi_change(cmd, value)
-                    )
+                spinbox.valueChanged.connect(
+                    lambda value, n=name: self.handle_roi_change(n, value)
+                )
                 
                 # Set initial value
                 spinbox.setValue(current)
-                print(f"Initialized {name} control with value: {current}, step: {increment}")
             
             return True
             
@@ -87,64 +68,95 @@ class ROIControl(NumericCameraControl):
             print(f"Error setting up ROI controls: {str(e)}")
             return False
     
-    def handle_dimension_change(self, dimension: str, value: int):
-        """Handle changes to width or height, updating offset limits."""
-        print(f"ROI {dimension} changed to: {value}")
+    def _validate_value(self, name: str, value: int, increment: int) -> int:
+        """Validate and adjust ROI values."""
+        # Align to increment
+        value = (value // increment) * increment
         
-        try:
-            # First apply the dimension change
-            self.camera_control.call_camera_command(dimension, "set", value)
+        # Validate against max dimensions for offsets and dimensions
+        if name == 'offset_x':
+            max_offset = self.max_dimensions['width'] - self.window.roi_width.value()
+            value = min(value, max_offset)
+        elif name == 'offset_y':
+            max_offset = self.max_dimensions['height'] - self.window.roi_height.value()
+            value = min(value, max_offset)
+        elif name == 'width':
+            max_width = self.max_dimensions['width'] - self.window.roi_offset_x.value()
+            value = min(value, max_width)
+        elif name == 'height':
+            max_height = self.max_dimensions['height'] - self.window.roi_offset_y.value()
+            value = min(value, max_height)
             
-            # Update corresponding offset limit
-            if dimension == 'width':
-                new_offset_max = self.max_width - value
-                self.window.roi_offset_x.setMaximum(new_offset_max)
-                print(f"Updated offset_x max to: {new_offset_max}")
-                
-                # Adjust offset_x if needed
-                current_offset = self.window.roi_offset_x.value()
-                if current_offset > new_offset_max:
-                    self.window.roi_offset_x.setValue(new_offset_max)
-                    self.camera_control.call_camera_command("offset_x", "set", new_offset_max)
-                    
-            else:  # height
-                new_offset_max = self.max_height - value
-                self.window.roi_offset_y.setMaximum(new_offset_max)
-                print(f"Updated offset_y max to: {new_offset_max}")
-                
-                # Adjust offset_y if needed
-                current_offset = self.window.roi_offset_y.value()
-                if current_offset > new_offset_max:
-                    self.window.roi_offset_y.setValue(new_offset_max)
-                    self.camera_control.call_camera_command("offset_y", "set", new_offset_max)
-                    
-        except Exception as e:
-            print(f"Error handling {dimension} change: {str(e)}")
+        return value
     
-    def handle_roi_change(self, command_name: str, value: int):
-        """Handle changes to offset values."""
-        print(f"ROI {command_name} changed to: {value}")
+    def handle_roi_change(self, name: str, value: int):
+        """Unified handler for all ROI changes."""
         try:
-            # Get the increment value
-            increment = int(self.camera_control.call_camera_command(f"{command_name}_inc", "get"))
+            # Get increment for alignment
+            cmd_name = self.controls[name][1]
+            increment = int(self.camera_control.call_camera_command(f"{cmd_name}_inc", "get"))
             
-            # Ensure value is aligned with increment
-            aligned_value = (value // increment) * increment
-            if aligned_value != value:
-                print(f"Adjusting {command_name} value to align with increment: {value} -> {aligned_value}")
-                value = aligned_value
-                # Update the spinbox without triggering another change
-                for _, (spinbox, cmd) in self.controls.items():
-                    if cmd == command_name:
-                        spinbox.blockSignals(True)
-                        spinbox.setValue(value)
-                        spinbox.blockSignals(False)
-                        break
+            # Validate and adjust value
+            value = self._validate_value(name, value, increment)
             
-            self.camera_control.call_camera_command(command_name, "set", value)
-            print(f"Successfully applied {command_name} = {value}")
+            # Update spinbox if value was adjusted
+            spinbox = self.controls[name][0]
+            if spinbox.value() != value:
+                spinbox.blockSignals(True)
+                spinbox.setValue(value)
+                spinbox.blockSignals(False)
+            
+            # Apply to camera
+            self.camera_control.call_camera_command(cmd_name, "set", value)
+            
+            # Update limits based on what changed
+            if name in ['width', 'height']:
+                self._update_offset_limits(name)
+            else:  # offset_x or offset_y
+                self._update_dimension_limits(name)
+                
         except Exception as e:
-            print(f"Error applying {command_name} value: {str(e)}")
+            print(f"Error handling ROI change: {str(e)}")
+    
+    def _update_offset_limits(self, changed_dimension: str):
+        """Update offset limits when width/height changes."""
+        if changed_dimension == 'width':
+            new_offset_max = self.max_dimensions['width'] - self.window.roi_width.value()
+            self.window.roi_offset_x.setMaximum(new_offset_max)
+            
+            # Adjust offset if needed
+            current_offset = self.window.roi_offset_x.value()
+            if current_offset > new_offset_max:
+                self.handle_roi_change('offset_x', new_offset_max)
+                
+        else:  # height
+            new_offset_max = self.max_dimensions['height'] - self.window.roi_height.value()
+            self.window.roi_offset_y.setMaximum(new_offset_max)
+            
+            # Adjust offset if needed
+            current_offset = self.window.roi_offset_y.value()
+            if current_offset > new_offset_max:
+                self.handle_roi_change('offset_y', new_offset_max)
+    
+    def _update_dimension_limits(self, changed_offset: str):
+        """Update width/height limits when offsets change."""
+        if changed_offset == 'offset_x':
+            new_width_max = self.max_dimensions['width'] - self.window.roi_offset_x.value()
+            self.window.roi_width.setMaximum(new_width_max)
+            
+            # Adjust width if needed
+            current_width = self.window.roi_width.value()
+            if current_width > new_width_max:
+                self.handle_roi_change('width', new_width_max)
+                
+        else:  # offset_y
+            new_height_max = self.max_dimensions['height'] - self.window.roi_offset_y.value()
+            self.window.roi_height.setMaximum(new_height_max)
+            
+            # Adjust height if needed
+            current_height = self.window.roi_height.value()
+            if current_height > new_height_max:
+                self.handle_roi_change('height', new_height_max)
     
     def handle_value_change(self, value):
         """Not used - we handle changes directly in handle_roi_change."""
