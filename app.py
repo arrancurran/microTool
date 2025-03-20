@@ -5,7 +5,7 @@ from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
 from acquisitions.stream_camera import StreamCamera
 
-class CamTool():
+class microTool():
     def __init__(self):
         """UI Window"""
         self.app = QApplication(sys.argv)
@@ -18,9 +18,21 @@ class CamTool():
         self.stream_camera = StreamCamera(self.camera_control)
        
         """UI Methods"""
+        
+        for action, icon_path in self.window.ui_scaffolding['toolbar']['icons'].items():
+            print(action, icon_path)
+            # action_obj = QAction(qta.icon(icon_path), action, self)
+            # toolbar.addAction(action_obj)
+            # setattr(self, action, action_obj)
+            
+        # Create UI Methods instance first
+        self.ui_methods = UIMethods(self.window, self.stream_camera)
+        
+        # Then connect all signals
         self.window.start_stream.triggered.connect(self.stream_camera.start_stream)
         self.window.stop_stream.triggered.connect(self.stream_camera.stop_stream)
-        self.ui_methods = UIMethods(self.window, self.stream_camera)
+        self.window.snapshot.triggered.connect(self.ui_methods.handle_snapshot)
+        self.window.start_recording.triggered.connect(self.ui_methods.handle_recording)
        
         """Connect the stream to update the image display"""
         self.stream_camera.frame_ready.connect(self.ui_methods.update_ui_image)
@@ -36,7 +48,7 @@ class CamTool():
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
             event.accept()
-            print("CamTool.cleanup(): Resources cleaned up.")
+            print("microTool.cleanup(): Resources cleaned up.")
         except Exception as e:
             print(f"Error during cleanup: {e}")
             event.accept()
@@ -52,10 +64,10 @@ class CamTool():
                 self.stream_camera.cleanup()
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
-            print("CamTool.__del__(): Resources cleaned up.")
+            print("microTool.__del__(): Resources cleaned up.")
         except Exception as e:
             print(f"Error during __del__ cleanup: {e}")
 
 if __name__ == "__main__":
-    app = CamTool()
+    app = microTool()
     app.run()
