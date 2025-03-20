@@ -2,7 +2,6 @@ import sys
 from PyQt6.QtWidgets import QApplication
 from interface.ui import ui
 from interface.ui_methods import UIMethods
-
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
 from acquisitions.stream_camera import StreamCamera
 
@@ -44,8 +43,6 @@ class CamTool():
     
     def run(self):
         self.window.show()
-        # with open(os.path.join('interface', "style.css"), "r") as f:
-        #     self.window.setStyleSheet(f.read())
         sys.exit(self.app.exec())
         
     def __del__(self):
