@@ -1,5 +1,5 @@
 """
-Utility functions for ColloidCam.
+Utility functions for microTool.
 """
 from .image import calc_img_hist
 

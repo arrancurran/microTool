@@ -4,7 +4,7 @@
             "initial_width": 1200,
             "initial_height": 800
         },
-        "setWindowTitle": "ColloidCam",
+        "setWindowTitle": "microTool",
         
         "setStyleSheet": "background-color: #2b2b2b;",
 

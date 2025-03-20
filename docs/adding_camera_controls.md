@@ -1,6 +1,6 @@
 # Adding New Camera Controls
 
-This guide explains how to add new controls for camera parameters to the ColloidCam application.
+This guide explains how to add new controls for camera parameters to the microTool application.
 
 ## Overview
 

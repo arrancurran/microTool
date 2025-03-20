@@ -1,6 +1,6 @@
-# ColloidCam
+# microTool
 
-ColloidCam is a Python application for interfacing with Ximea cameras, providing real-time image capture, display, and control capabilities. It features a modern Qt-based interface with modular camera controls and efficient image processing.
+microTool is a Python application for interfacing with Ximea cameras, providing real-time image capture, display, and control capabilities. It features a modern Qt-based interface with modular camera controls and efficient image processing.
 
 ## Features
 
@@ -14,7 +14,7 @@ ColloidCam is a Python application for interfacing with Ximea cameras, providing
 ## Project Structure
 
 ```
-ColloidCam/
+microTool/
 ├── app.py                          # Main application entry point
 ├── acquisitions/                # Image acquisition code
 │   └── stream_camera.py  # Camera streaming functionality
@@ -44,8 +44,8 @@ ColloidCam/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/ColloidCam.git
-   cd ColloidCam
+   git clone https://github.com/yourusername/microTool.git
+   cd microTool
    ```
 
 2. **Create a virtual environment (recommended):**
