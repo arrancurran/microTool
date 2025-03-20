@@ -55,6 +55,11 @@ class ui(QMainWindow):
         self.roi_offset_x = QSpinBox()
         self.roi_offset_y = QSpinBox()
         
+        # Set fixed width for ROI inputs
+        roi_input_width = self.ui_scaffolding['roi']['input_width']
+        for spinbox in [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]:
+            spinbox.setFixedWidth(roi_input_width)
+        
         """Right Column"""
         right_column = QWidget()
         right_layout = QVBoxLayout(right_column)

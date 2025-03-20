@@ -21,6 +21,7 @@
         "min_height": 480
     },
     "roi": {
+        "input_width": 60,
         "width": {
             "min": 1,
             "max": 2048,
