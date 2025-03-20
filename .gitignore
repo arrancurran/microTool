@@ -125,3 +125,12 @@ cython_debug/
 
 # VS Code
 .vscode/
+
+*.tiff
+
+.cursorrules
+
+.cursorignore
+
+.cursorignorerules
+
