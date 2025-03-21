@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import QStyle
 from PyQt6.QtCore import Qt, QObject
 from PyQt6.QtGui import QImage, QPixmap
-from utils import calc_img_hist
+from utils import calc_img_hist, update_status
 from .camera_controls.control_manager import CameraControlManager
 from acquisitions.snapshot import Snapshot
 from acquisitions.record_stream import RecordStream
 import qtawesome as qta
+
 class UIMethods(QObject):
     
     def __init__(self, window, stream_camera):
@@ -36,10 +37,10 @@ class UIMethods(QObject):
         """Handle snapshot button click."""
         if self.snapshot.save_snapshot():
             # Update status bar to show success
-            self.window.status_bar.showMessage("Snapshot saved", 2000)  # Show for 2 seconds
+            update_status("Snapshot saved", duration=2000)
         else:
             # Update status bar to show failure
-            self.window.status_bar.showMessage("Failed to save snapshot", 2000)
+            update_status("Failed to save snapshot", duration=2000)
     
     def handle_recording(self):
         """Handle record button toggle."""
@@ -50,16 +51,15 @@ class UIMethods(QObject):
             # Start recording
             if self.record_stream.start_recording():
                 self.window.start_recording.is_recording = True
-                self.window.start_recording.setIcon(qta.icon("fa5s.stop"))
-                self.window.status_bar.showMessage("Recording started ")
+                self.window.start_recording.setIcon(qta.icon("fa5s.stop", color='red'))
             else:
-                self.window.status_bar.showMessage("Failed to start recording", 2000)
+                update_status("Failed to start recording", duration=2000)
         else:
             # Stop recording
             self.record_stream.stop_recording()
             self.window.start_recording.is_recording = False
             self.window.start_recording.setIcon(qta.icon("fa5.dot-circle"))
-            self.window.status_bar.showMessage("Recording stopped", 2000)
+            update_status("Recording stopped", duration=2000)
     
     def update_ui_image(self):
         """Get the latest frame from the stream and update the UI image display."""
