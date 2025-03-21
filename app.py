@@ -4,6 +4,7 @@ from interface.ui import ui
 from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
 from acquisitions.stream_camera import StreamCamera
+from utils.status import set_main_window
 
 class microTool():
     def __init__(self):
@@ -18,15 +19,17 @@ class microTool():
         self.stream_camera = StreamCamera(self.camera_control)
        
         """UI Methods"""
-        
         for action, icon_path in self.window.ui_scaffolding['toolbar']['icons'].items():
-            print(action, icon_path)
+            print(action, icon_path)    
             # action_obj = QAction(qta.icon(icon_path), action, self)
             # toolbar.addAction(action_obj)
             # setattr(self, action, action_obj)
             
         # Create UI Methods instance first
         self.ui_methods = UIMethods(self.window, self.stream_camera)
+        
+        # Set up status bar management
+        set_main_window(self.window)
         
         # Then connect all signals
         self.window.start_stream.triggered.connect(self.stream_camera.start_stream)
