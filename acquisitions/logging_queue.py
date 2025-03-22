@@ -8,8 +8,12 @@ from utils.status import update_status
 class LoggingQueue:
     """Handles the queue setup and management for frame logging."""
     
-    def __init__(self, window):
+    def __init__(self, window, roi_width, roi_height):
         self.window = window
+        
+        # Store ROI dimensions
+        self.roi_width = roi_width
+        self.roi_height = roi_height
         
         # Initialize queue
         self.queue_size = self._calculate_queue_size()
@@ -22,11 +26,19 @@ class LoggingQueue:
         self.frames_saved = 0
         
     def _calculate_queue_size(self):
-        """Calculate queue size based on 50% of available RAM."""
+        """Calculate queue size based on 90% of available RAM."""
         available_ram = psutil.virtual_memory().available
-        size = int((available_ram * 0.5) / (2048 * 2048))
-        print(f"Queue size set to {size} frames")
-        return size
+        queue_size_bytes = available_ram * 0.9
+        
+        # Calculate bytes per frame (assuming 8-bit depth) We can update this one day to handle any bit depth
+        bytes_per_pixel = 1  # 8-bit = 1 byte
+        bytes_per_frame = self.roi_width * self.roi_height * bytes_per_pixel
+        
+        queue_size_elements = queue_size_bytes / bytes_per_frame
+        queue_size_GB = int(queue_size_bytes / 1024**3)
+        
+        print(f"Queue size set to {queue_size_elements:.1f} elements ({(queue_size_GB)} GB)")
+        return int(queue_size_elements)
         
     def _update_status(self, message):
         """Update status bar and print message."""
@@ -52,17 +64,11 @@ class LoggingQueue:
         if self.frame_bytes is None:
             self.frame_bytes = frame.nbytes
             
-        if self.frame_queue.qsize() >= self.queue_size * 0.9:
-            time.sleep(0.001)  # Apply backpressure
-            return False
-            
         try:
             self.frame_queue.put((frame, timestamp), timeout=0.1)
             self.frames_recorded += 1
             return True
         except Full:
-            self.frames_dropped += 1
-            print(f"Warning: Frame dropped - queue full ({self.frames_dropped} total drops)")
             return False
             
     def get_frame(self, timeout=0.1):
