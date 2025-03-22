@@ -3,7 +3,7 @@ from datetime import datetime
 import time
 from .log_HDF5 import HDF5Logger
 from .logging_queue import LoggingQueue
-from utils import update_status
+from utils import update_status, get_computer_name
 import qtawesome as qta
 
 class RecordStream:
@@ -45,6 +45,7 @@ class RecordStream:
             
             # Initialize recording
             metadata = {
+                'computer_name': get_computer_name(),
                 'camera_model': self.camera_control.camera.get_device_name().decode('utf-8'),
                 'timestamp': datetime.now().isoformat(),
                 'exposure': self.camera_control.call_camera_command("exposure", "get"),
