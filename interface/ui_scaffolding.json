@@ -1,11 +1,35 @@
 {
     "toolbar": {
         "icons": {
-            "start_stream": "fa5s.play",
-            "stop_stream": "fa5s.stop",
-            "start_recording": "fa5.dot-circle",
-            "snapshot": "fa5s.camera"
+            "Start Live Stream": {
+                "icon": "fa5.play-circle",
+                "cmd": "start_stream",
+                "tooltip": "Start Live Stream"
+            },
+            "Stop Live Stream": {
+                "icon": "fa5.stop-circle",
+                "cmd": "stop_stream",
+                "tooltip": "Stop Live Stream"
+            },
+            "Start Recording": {
+                "icon": "fa5.dot-circle",
+                "cmd": "start_recording",
+                "tooltip": "Start Recording Live Stream",
+
+                "Stop Recording": {
+                    "icon": "fa5.stop-circle",
+                    "cmd": "stop_recording",
+                    "tooltip": "Stop Recording",
+                    "icon_color": "#FF4444"
+                }
+            },
+            "Snapshot": {
+                "icon": "fa5s.camera",
+                "cmd": "snapshot",
+                "tooltip": "Snapshot"
+            }
         }
+
     },
     "status_bar": {
         "labels": {

@@ -45,7 +45,8 @@ class CameraControl:
     TODO: We should also set the image format to mono8 or mono16 depending on the camera
     """
     def __init__(self):
-        """Initialize the camera object but do not start it."""
+        
+        """Initialize the camera object."""
         self.camera = None
         self.image = None
         self.set_commands = {}
@@ -58,7 +59,8 @@ class CameraControl:
         self.running = True
         
     def _load_commands(self):
-        """Load camera commands from the JSON file."""
+       
+        """Load Ximea camera commands from the JSON file."""
         with open('instruments/xicam/commands.json', 'r') as file:
             commands = json.load(file)
         self.set_commands = {cmd['cmd']: cmd for cmd in commands['set']}
@@ -67,6 +69,7 @@ class CameraControl:
         self.get_commands_by_name = {cmd['name']: cmd for cmd in commands['get']}
     
     def start_command_thread(self):
+        
         """Start the command processing thread."""
         if self.command_thread is None:
             self.running = True
@@ -75,6 +78,7 @@ class CameraControl:
             self.command_thread.start()
     
     def stop_command_thread(self):
+        
         """Stop the command processing thread."""
         self.running = False
         if self.command_thread:
@@ -82,47 +86,46 @@ class CameraControl:
             self.command_thread = None
     
     def _process_commands(self):
+        
         """Process commands from the queue."""
         while self.running:
             try:
-                # Get command from queue with timeout to allow checking running flag
+                # Get command from self.command_queue (initialized in __init__ from Queue()) with timeout to allow checking running flag
                 command = self.command_queue.get(timeout=0.1)
                 if command is None:
                     continue
                 
                 friendly_name, method, value, result_queue = command
-                # print(f"Processing command: {method} {friendly_name} = {value}")  # Debug print
                 
                 with self.camera_lock:
                     try:
                         result = self._execute_camera_command(friendly_name, method, value)
                         if result_queue:
                             result_queue.put(result)
-                            # print(f"Command result queued: {result}")  # Debug print
                     except Exception as e:
                         print(f"Error executing camera command: {str(e)}")
                         if result_queue:
                             result_queue.put(None)
                 
                 self.command_queue.task_done()
-                # print(f"Command processed: {method} {friendly_name}")  # Debug print
             except:
-                # Timeout on queue.get, continue loop
+                """Timeout on queue, continue loop"""
                 continue
     
     def _execute_camera_command(self, friendly_name, method, value=None):
+       
         """Execute a single camera command."""
         if not self.camera:
             print("CameraControl._execute_camera_command(): Camera not initialized.")
             return None
 
-        # Look up command by friendly name in the appropriate dictionary
+        """Look up command by friendly name in the appropriate dictionary"""
         cmd_dict = self.set_commands_by_name if method == "set" else self.get_commands_by_name
         if friendly_name not in cmd_dict:
             print(f"CameraControl._execute_camera_command(): Command with friendly name '{friendly_name}' not found in {method} commands.")
             return None
 
-        # Get the original command name for the API call
+        """Get the Ximea API command name for the API call"""
         cmd_info = cmd_dict[friendly_name]
         api_cmd_name = cmd_info['cmd']
         method_name = f"{method}_{api_cmd_name}"
@@ -150,22 +153,20 @@ class CameraControl:
                 return value
             else:  # method == "get"
                 result = camera_method()
-                # print(f"Got {friendly_name}: {result}")  # Debug print
                 return result
         except Exception as e:
             print(f"Error executing camera command {method_name}: {str(e)}")
             return None
     
     def call_camera_command(self, friendly_name, method, value=None):
+        
         """Queue a camera command and wait for its result."""
-        # print(f"Queueing camera command: {method} {friendly_name} = {value}")  # Debug print
         result_queue = Queue() if method == "get" else None
         self.command_queue.put((friendly_name, method, value, result_queue))
         
         if result_queue:
             try:
-                result = result_queue.get(timeout=5.0)  # 5 second timeout for get operations
-                print(f"Got result for {friendly_name}: {result}")  # Debug print
+                result = result_queue.get(timeout=2.0)  # 2 second timeout for get operations
                 return result
             except:
                 print("Timeout waiting for camera command result")
@@ -173,6 +174,7 @@ class CameraControl:
         return None
         
     def initialize_camera(self):
+        
         """Initialize the camera object."""
         if self.camera is None:
             with self.camera_lock:
@@ -186,6 +188,8 @@ class CameraControl:
             print("CameraControl.initialize_camera(): Camera already initialized.")
 
     def open_camera(self):
+        
+        """Open the camera."""
         if self.camera:
             with self.camera_lock:
                 self.camera.open_device()
@@ -194,6 +198,8 @@ class CameraControl:
             print("CameraControl.open_camera(): Camera not opened.")
 
     def ImageObject(self):
+        
+        """Create an image object."""
         if self.image is None:
             self.image = xiapi.Image()
             print("CameraControl.ImageObject(): Image object created.")
@@ -201,6 +207,8 @@ class CameraControl:
             print("CameraControl.ImageObject(): Image object already created.")
 
     def start_camera(self):
+        
+        """Start the camera."""
         if self.camera:
             with self.camera_lock:
                 self.camera.start_acquisition()
@@ -209,6 +217,8 @@ class CameraControl:
             print("CameraControl.start_camera(): Camera failed to start acquisition.")
     
     def get_image(self):
+        
+        """Get an image from the camera."""
         if self.image:
             with self.camera_lock:
                 return self.camera.get_image(self.image)
@@ -216,12 +226,16 @@ class CameraControl:
             print("CameraControl.get_image(): Image object doesn't exist.")
 
     def get_image_data(self):
+        
+        """Get the image data as a numpy array."""
         if self.image:
             return self.image.get_image_data_numpy()
         else:
             print("CameraControl.get_image_data(): Failed to get image numpy data.")
     
     def get_image_timestamp(self):
+        
+        """Get the image timestamp."""
         if self.image:
             tsSec = self.image.tsSec
             tsUSec = self.image.tsUSec
@@ -231,6 +245,8 @@ class CameraControl:
             print("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
     
     def stop_camera(self):
+        
+        """Stop the camera."""
         if self.camera:
             with self.camera_lock:
                 self.camera.stop_acquisition()
@@ -239,6 +255,8 @@ class CameraControl:
             print("CameraControl.stop_camera(): Camera failed to stop acquisition.")
 
     def close(self):
+        
+        """Close the camera."""
         self.stop_command_thread()
         if self.camera:
             with self.camera_lock:
@@ -269,15 +287,20 @@ class CameraSequences():
         sequences.disconnect_camera()
     """
     def __init__(self, camera_control):
+        
         """Takes a CameraControl instance and uses its camera."""
         self.camera_control = camera_control
 
     def connect_camera(self):
+        
+        """Connection sequence for the Ximea camera."""
         self.camera_control.initialize_camera()
         self.camera_control.open_camera()
         self.camera_control.ImageObject()
     
     def disconnect_camera(self):
+        
+        """Disconnect from the Ximea camera."""
         self.camera_control.close()
 
     def acquire_time_series(self, num_images):

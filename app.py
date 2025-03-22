@@ -19,16 +19,21 @@ class microTool():
         self.stream_camera = StreamCamera(self.camera_control)
        
         """UI Methods"""
-        # Create UI Methods instance first
         self.ui_methods = UIMethods(self.window, self.stream_camera)
         
-        # Connect UI methods to image container
+        """Connect the UI methods to the image container"""
         self.window.image_container.ui_methods = self.ui_methods
-        
-        # Set up status bar management
+
+        """Set the main window"""
         set_main_window(self.window)
-        
-        # Then connect all signals
+
+        """Connect the stream to update the image display"""
+        self.stream_camera.frame_ready.connect(self.ui_methods.update_ui_image)
+
+        """Connect the window close event to our cleanup method"""
+        self.window.closeEvent = self.cleanup
+
+        """Connect all signals"""
         self.window.start_stream.triggered.connect(self.stream_camera.start_stream)
         self.window.stop_stream.triggered.connect(self.stream_camera.stop_stream)
         self.window.snapshot.triggered.connect(self.ui_methods.handle_snapshot)

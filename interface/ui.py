@@ -1,7 +1,6 @@
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QStyle, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
-# Run qta-browser from terminal to see all available icons
 import qtawesome as qta
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -12,6 +11,8 @@ ui_layout class sets up the main window layout. It is then called in main.py.
 """
 
 class ImageLabel(QLabel):
+    
+    #    TODO: Should we move this to ui_methods?
     """Custom QLabel that handles mouse events for ROI drawing"""
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -19,18 +20,26 @@ class ImageLabel(QLabel):
         self.ui_methods = None
 
     def mousePressEvent(self, event):
+        
+        """Handle mouse press events"""
         if self.ui_methods:
             self.ui_methods.handle_mouse_press(event)
 
     def mouseMoveEvent(self, event):
+        
+        """Handle mouse move events"""
         if self.ui_methods:
             self.ui_methods.handle_mouse_move(event)
 
     def mouseReleaseEvent(self, event):
+        
+        """Handle mouse release events"""
         if self.ui_methods:
             self.ui_methods.handle_mouse_release(event)
 
     def paintEvent(self, event):
+        
+        """Handle paint events"""
         super().paintEvent(event)
         if self.ui_methods:
             painter = QPainter(self)
@@ -42,34 +51,40 @@ class ui(QMainWindow):
     Base interface class that contains all UI elements without hardware dependencies.
     """
     def __init__(self):
+        
+        """Initialize the main window"""
         super().__init__()
         self.ui_scaffolding = self.load_json('ui_scaffolding.json')
         
-        # Initialize status bar first
+        """Initialize status bar"""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         
-        # Create status bar labels
+        """Create status bar labels"""
         for label_name, label_text in self.ui_scaffolding['status_bar']['labels'].items():
             label = QLabel()
             setattr(self, f"{label_name}_label", label)
             self.status_bar.addWidget(label)
             label.setText(label_text)
             
-        # Build the rest of the UI
+        """Build the rest of the UI"""
         self.build_ui()
         # self.apply_styles()  # Apply styling after UI is built
 
     def load_json(self, file_path):
+        
         """Load settings from ui_settings.json"""
         with open(os.path.join('interface', file_path), 'r') as f:
             return json.load(f)
 
-    def apply_styles(self):
-        with open(os.path.join('interface', "style.css"), "r") as f:
-            self.setStyleSheet(f.read())
+    # def apply_styles(self):
+        
+    #     """Apply styles to the UI"""
+    #     with open(os.path.join('interface', "style.css"), "r") as f:
+    #         self.setStyleSheet(f.read())
     
     def build_ui(self):
+        
         """Main Window"""
         MainWindow_widget = QWidget(self)
         self.setCentralWidget(MainWindow_widget)
@@ -87,32 +102,45 @@ class ui(QMainWindow):
         
         """ROI Group Box"""
         roi_group = QGroupBox("Region of Interest")
-        roi_layout = QFormLayout()
+        roi_layout = QVBoxLayout()
+        
+        """Create a form layout for the ROI inputs"""
+        roi_form_layout = QFormLayout()
         
         self.roi_width = QSpinBox()
         self.roi_height = QSpinBox()
         self.roi_offset_x = QSpinBox()
         self.roi_offset_y = QSpinBox()
         
-        # Set fixed width for ROI inputs
+        """Set fixed width for ROI inputs"""
         roi_input_width = self.ui_scaffolding['roi']['input_width']
         for spinbox in [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]:
             spinbox.setFixedWidth(roi_input_width)
         
-        """Add ROI Controls to Layout"""
-        roi_layout.addRow("Width:", self.roi_width)
-        roi_layout.addRow("Height:", self.roi_height)
-        roi_layout.addRow("Offset X:", self.roi_offset_x)
-        roi_layout.addRow("Offset Y:", self.roi_offset_y)
+        """Add ROI Controls to Form Layout"""
+        roi_form_layout.addRow("Width:", self.roi_width)
+        roi_form_layout.addRow("Height:", self.roi_height)
+        roi_form_layout.addRow("Offset X:", self.roi_offset_x)
+        roi_form_layout.addRow("Offset Y:", self.roi_offset_y)
         
-        # Add buttons below ROI controls
+        """Add the form layout to the main ROI layout"""
+        roi_layout.addLayout(roi_form_layout)
+        
+        """Add buttons below ROI controls"""
+        button_container = QWidget()
+        button_layout = QVBoxLayout(button_container)
+        button_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
         self.apply_roi_button = QPushButton("Apply ROI")
         self.apply_roi_button.setFixedWidth(200)
-        roi_layout.addRow("", self.apply_roi_button)  # Empty label for alignment
+        button_layout.addWidget(self.apply_roi_button)
         
         self.reset_roi_button = QPushButton("Reset ROI")
         self.reset_roi_button.setFixedWidth(200)
-        roi_layout.addRow("", self.reset_roi_button)  # Empty label for alignment
+        button_layout.addWidget(self.reset_roi_button)
+        
+        """Add the button container to the ROI layout"""
+        roi_layout.addWidget(button_container)
         
         roi_group.setLayout(roi_layout)
         
@@ -154,7 +182,8 @@ class ui(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
 
         """Add toolbar actions"""
-        for action, icon_path in self.ui_scaffolding['toolbar']['icons'].items():
-            action_obj = QAction(qta.icon(icon_path), action, self)
+        for action_name, action_data in self.ui_scaffolding['toolbar']['icons'].items():
+            action_obj = QAction(qta.icon(action_data['icon']), action_name, self)
+            action_obj.setToolTip(action_data['tooltip'])
             toolbar.addAction(action_obj)
-            setattr(self, action, action_obj)
+            setattr(self, action_data['cmd'], action_obj)
