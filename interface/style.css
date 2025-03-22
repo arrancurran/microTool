@@ -1,0 +1,27 @@
+QMainWindow {
+    background-color: rgb(31,31,31);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+QToolBar {
+    /* background-color: #333; */
+    spacing: 5px; /* spacing between items in the tool bar */
+}
+
+QToolBar::separator:vertical {
+    height: 10px;
+}
+
+QWidget {
+    /* background-color: #f0f0f0; */
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    /* margin: 0; */
+}
+
+QPushButton {
+    /* background-color: #0078D7; */
+    color: white;
+    border-radius: 5px;
+    padding: 5px;
+}

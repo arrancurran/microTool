@@ -1,0 +1,50 @@
+{
+    "toolbar": {
+        "icons": {
+            "start_stream": "fa5s.play",
+            "stop_stream": "fa5s.stop",
+            "start_recording": "fa5.dot-circle",
+            "snapshot": "fa5s.camera"
+        }
+    },
+    "status_bar": {
+        "labels": {
+            "camera_model": "No Camera",
+            "roi_data": "0x0",
+            "framerate": "@ 0 Hz",
+            "image_size_on_disk": "0.00 MB",
+            "image_size_on_disk_bandwidth": "0.00 MB/s"
+        }
+    },
+    "image_display": {
+        "min_width": 640,
+        "min_height": 480
+    },
+    "roi": {
+        "input_width": 60,
+        "width": {
+            "min": 1,
+            "max": 2048,
+            "step": 1,
+            "default": 2048
+        },
+        "height": {
+            "min": 1,
+            "max": 2048,
+            "step": 1,
+            "default": 2048
+        },
+        "offset_x": {
+            "min": 0,
+            "max": 2048,
+            "step": 1,
+            "default": 0
+        },
+        "offset_y": {
+            "min": 0,
+            "max": 2048,
+            "step": 1,
+            "default": 0
+        }
+    }
+} 
