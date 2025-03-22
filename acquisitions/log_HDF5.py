@@ -137,10 +137,9 @@ class HDF5Logger:
             # Stop saving thread first to prevent new frames from being added
             self.stop_saving()
             
-            # Wait for frames to be saved (max 30 seconds)
-            start_time = time.time()
-            while not queue.is_empty() and time.time() - start_time < 30:
-                self._update_save_status(queue, time.time(), start_time)
+            # Wait for frames to be saved without timeout
+            while not queue.is_empty():
+                self._update_save_status(queue, time.time(), time.time())
                 time.sleep(0.2)
             
             # Print initial statistics
@@ -157,7 +156,7 @@ class HDF5Logger:
             
             while True:
                 try:
-                    frame, timestamp = queue.get_frame(timeout=0.1)
+                    frame, timestamp = queue.get_frame(timeout=1.0)  # Increased timeout for reliability
                     if frame is None:
                         break
                         
@@ -173,7 +172,9 @@ class HDF5Logger:
                         
                 except Exception as e:
                     print(f"Error during batch saving: {e}")
-                    break
+                    # Don't break here, try to continue saving
+                    time.sleep(0.1)
+                    continue
             
             # Save any remaining frames
             if frames_to_save:
