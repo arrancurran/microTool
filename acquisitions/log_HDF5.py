@@ -123,13 +123,8 @@ class HDF5Logger:
     def _update_save_status(self, queue, current_time, start_time):
         """Update status message with saving progress."""
         queue_size = queue.get_queue_size()
-        frames_remaining = queue.frame_queue.qsize()
-        save_rate = queue.frames_saved / (current_time - start_time + 0.1)
-        estimated_time = int(frames_remaining / max(1, save_rate))
         
-        update_status(
-            f"Saving frames... ({queue_size} in queue, ~{estimated_time}s remaining)"
-        )
+        update_status(f"Saving Remaining Data in Queue... {queue_size}")
                 
     def cleanup(self, queue, was_streaming, window):
         """Handle cleanup after recording stops."""
@@ -187,18 +182,14 @@ class HDF5Logger:
                 print(f"Warning: {queue.frames_recorded - frames_handled} frames were lost during cleanup")
             
             # Show completion message
-            update_status("Acquisition finished and saved to disk.")
-            time.sleep(2)
-            update_status("")
+            update_status("Acquisition finished and saved to disk.", duration=2000)
             
             # Restart streaming if it was active
             if was_streaming:
                 window.start_stream.trigger()
                 
         except Exception as e:
-            update_status(f"Error during cleanup: {e}")
-            time.sleep(2)
-            update_status("")
+            update_status(f"Error during cleanup: {e}", duration=2000)
             
         finally:
             self._cleanup()

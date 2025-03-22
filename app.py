@@ -19,12 +19,6 @@ class microTool():
         self.stream_camera = StreamCamera(self.camera_control)
        
         """UI Methods"""
-        for action, icon_path in self.window.ui_scaffolding['toolbar']['icons'].items():
-            print(action, icon_path)    
-            # action_obj = QAction(qta.icon(icon_path), action, self)
-            # toolbar.addAction(action_obj)
-            # setattr(self, action, action_obj)
-            
         # Create UI Methods instance first
         self.ui_methods = UIMethods(self.window, self.stream_camera)
         
