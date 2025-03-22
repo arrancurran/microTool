@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QStyle
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
 # Run qta-browser from terminal to see all available icons
 import qtawesome as qta
@@ -10,6 +10,32 @@ import json, os
 """ 
 ui_layout class sets up the main window layout. It is then called in main.py.
 """
+
+class ImageLabel(QLabel):
+    """Custom QLabel that handles mouse events for ROI drawing"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        self.ui_methods = None
+
+    def mousePressEvent(self, event):
+        if self.ui_methods:
+            self.ui_methods.handle_mouse_press(event)
+
+    def mouseMoveEvent(self, event):
+        if self.ui_methods:
+            self.ui_methods.handle_mouse_move(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.ui_methods:
+            self.ui_methods.handle_mouse_release(event)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.ui_methods:
+            painter = QPainter(self)
+            self.ui_methods.handle_paint(painter)
+            painter.end()
 
 class ui(QMainWindow):
     """
@@ -41,7 +67,7 @@ class ui(QMainWindow):
         controls_layout = QHBoxLayout(controls_container)
 
         """Camera Image Container"""
-        self.image_container = QLabel(self)
+        self.image_container = ImageLabel(self)
         image_scaffolding = self.ui_scaffolding['image_display']
         self.image_container.setMinimumSize(image_scaffolding['min_width'], image_scaffolding['min_height'])
         self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -115,26 +141,7 @@ class ui(QMainWindow):
             self.status_bar.addWidget(label)
             label.setText(label_text)
 
-        # """Add Actions to Toolbar"""
-        # self.start_stream = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay), "Start Stream", self)
-        # self.stop_stream = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop), "Stop Stream", self)
-        # self.snapshot = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "Take Snapshot", self)
-        # self.start_recording = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaRecord), "Record", self)
-        
-        # toolbar.addAction(self.start_stream)
-        # toolbar.addAction(self.stop_stream)
-        # toolbar.addAction(self.snapshot)
-        # toolbar.addAction(self.start_recording)
-
-
-
-
         for action, icon_path in self.ui_scaffolding['toolbar']['icons'].items():
             action_obj = QAction(qta.icon(icon_path), action, self)
             toolbar.addAction(action_obj)
             setattr(self, action, action_obj)
-        # self.start_stream = QAction(qta.icon("fa5s.play"), "Start Stream", self)
-        # self.stop_stream = QAction(qta.icon("fa5s.stop"), "Stop Stream", self)
-
-        # toolbar.addAction(self.start_stream)
-        # toolbar.addAction(self.stop_stream)

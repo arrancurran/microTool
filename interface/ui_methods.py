@@ -1,11 +1,13 @@
 from PyQt6.QtWidgets import QStyle
 from PyQt6.QtCore import Qt, QObject
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QPainter
 from utils import calc_img_hist, update_status
 from .camera_controls.control_manager import CameraControlManager
 from acquisitions.snapshot import Snapshot
 from acquisitions.record_stream import RecordStream
+from .draw_roi import DrawROI
 import qtawesome as qta
+import numpy as np
 
 class UIMethods(QObject):
     
@@ -17,6 +19,7 @@ class UIMethods(QObject):
         self.camera_control = self.stream_camera.camera_control
         self.snapshot = Snapshot(stream_camera, window)
         self.record_stream = RecordStream(stream_camera, window)
+        self.draw_roi = DrawROI()
         
         # Initialize camera controls
         print("Initializing camera controls in UIMethods...")  # Debug print
@@ -32,6 +35,23 @@ class UIMethods(QObject):
             print(f"Current exposure: {current}")  # Debug print
         else:
             print("Warning: Exposure control not initialized")  # Debug print
+        self.original_image_size = None
+
+    def handle_mouse_press(self, event):
+        """Handle mouse press events for ROI drawing."""
+        self.draw_roi.mousePressEvent(event, self.window.image_container)
+
+    def handle_mouse_move(self, event):
+        """Handle mouse move events for ROI drawing."""
+        self.draw_roi.mouseMoveEvent(event, self.window.image_container)
+
+    def handle_mouse_release(self, event):
+        """Handle mouse release events for ROI drawing."""
+        self.draw_roi.mouseReleaseEvent(event, self.window.image_container)
+
+    def handle_paint(self, painter):
+        """Handle paint events for ROI drawing."""
+        self.draw_roi.draw_rectangle(painter, self.window.image_container)
     
     def handle_snapshot(self):
         """Handle snapshot button click."""
@@ -73,9 +93,42 @@ class UIMethods(QObject):
         image_data = QImage(np_image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
         image = QPixmap(image_data)
         
-        image_container_size = self.window.image_container.size()
-        scaled_image = image.scaled(image_container_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)        
-        self.window.image_container.setPixmap(scaled_image)
+        # Get container size
+        container_size = self.window.image_container.size()
+        
+        # Calculate scaling to fit the image while maintaining aspect ratio
+        scaled_image = image.scaled(container_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        
+        # Calculate the offset to center the image
+        offset_x = (container_size.width() - scaled_image.width()) // 2
+        offset_y = (container_size.height() - scaled_image.height()) // 2
+        
+        # Calculate the scale factors for both dimensions
+        scale_factor_x = scaled_image.width() / width
+        scale_factor_y = scaled_image.height() / height
+        
+        # Update the ROI drawing parameters
+        self.draw_roi.update_scale_and_offset(
+            scale_factor_x, scale_factor_y, 
+            offset_x, offset_y,
+            scaled_image.width(), scaled_image.height(),
+            width, height
+        )
+        
+        # Create a new pixmap for drawing
+        final_image = QPixmap(container_size)
+        final_image.fill(Qt.GlobalColor.transparent)
+        
+        # Draw the scaled image
+        painter = QPainter(final_image)
+        painter.drawPixmap(offset_x, offset_y, scaled_image)
+        
+        # Draw the ROI if any
+        self.draw_roi.draw_rectangle(painter, self.window.image_container)
+        painter.end()
+        
+        self.window.image_container.setPixmap(final_image)
+        self.original_image_size = (width, height)
 
         # Update the histogram 
         calc_img_hist(self.window, np_image_data)

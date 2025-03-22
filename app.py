@@ -28,6 +28,9 @@ class microTool():
         # Create UI Methods instance first
         self.ui_methods = UIMethods(self.window, self.stream_camera)
         
+        # Connect UI methods to image container
+        self.window.image_container.ui_methods = self.ui_methods
+        
         # Set up status bar management
         set_main_window(self.window)
         
