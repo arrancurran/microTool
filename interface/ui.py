@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QStyle
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QStyle, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
 # Run qta-browser from terminal to see all available icons
@@ -86,17 +86,27 @@ class ui(QMainWindow):
         for spinbox in [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]:
             spinbox.setFixedWidth(roi_input_width)
         
-        """Right Column"""
-        right_column = QWidget()
-        right_layout = QVBoxLayout(right_column)
-        
         """Add ROI Controls to Layout"""
         roi_layout.addRow("Width:", self.roi_width)
         roi_layout.addRow("Height:", self.roi_height)
         roi_layout.addRow("Offset X:", self.roi_offset_x)
         roi_layout.addRow("Offset Y:", self.roi_offset_y)
+        
+        # Add buttons below ROI controls
+        self.apply_roi_button = QPushButton("Apply ROI")
+        self.apply_roi_button.setFixedWidth(200)
+        roi_layout.addRow("", self.apply_roi_button)  # Empty label for alignment
+        
+        self.reset_roi_button = QPushButton("Reset ROI")
+        self.reset_roi_button.setFixedWidth(200)
+        roi_layout.addRow("", self.reset_roi_button)  # Empty label for alignment
+        
         roi_group.setLayout(roi_layout)
-
+        
+        """Right Column"""
+        right_column = QWidget()
+        right_layout = QVBoxLayout(right_column)
+        
         """Histogram"""
         self.hist_figure = plt.figure()
         self.hist_display = FigureCanvas(self.hist_figure)

@@ -26,6 +26,11 @@ class UIMethods(QObject):
         self.control_manager = CameraControlManager(self.camera_control, window)
         self.control_manager.initialize_controls()
         
+        # Connect the Apply ROI button
+        self.window.apply_roi_button.clicked.connect(self.handle_apply_roi)
+        # Connect the Reset ROI button
+        self.window.reset_roi_button.clicked.connect(self.handle_reset_roi)
+        
         # Verify exposure control was initialized
         exposure_control = self.control_manager.get_control('exposure')
         if exposure_control:
@@ -132,6 +137,58 @@ class UIMethods(QObject):
 
         # Update the histogram 
         calc_img_hist(self.window, np_image_data)
+    
+    def handle_apply_roi(self):
+        """Handle Apply ROI button click."""
+        if self.draw_roi.current_rect:
+            # Get the current rectangle coordinates
+            rect = self.draw_roi.current_rect
+            x = rect.x()
+            y = rect.y()
+            width = rect.width()
+            height = rect.height()
+            
+            # Get current ROI offset
+            current_offset_x = self.window.roi_offset_x.value()
+            current_offset_y = self.window.roi_offset_y.value()
+            
+            # Add current offset to the new rectangle position
+            new_offset_x = current_offset_x + x
+            new_offset_y = current_offset_y + y
+            
+            # Update the ROI spinboxes
+            self.window.roi_width.setValue(width)
+            self.window.roi_height.setValue(height)
+            self.window.roi_offset_x.setValue(new_offset_x)
+            self.window.roi_offset_y.setValue(new_offset_y)
+            
+            # Update status
+            update_status("ROI applied", duration=2000)
+        else:
+            update_status("No ROI selected", duration=2000)
+    
+    def handle_reset_roi(self):
+        """Handle Reset ROI button click."""
+        try:
+            
+            # Update the ROI spinboxes to max values
+            self.window.roi_offset_x.setValue(0)
+            self.window.roi_offset_y.setValue(0)
+            max_width = int(self.camera_control.call_camera_command("width_max", "get"))
+            max_height = int(self.camera_control.call_camera_command("height_max", "get"))
+            self.window.roi_width.setValue(max_width)
+            self.window.roi_height.setValue(max_height)
+            
+            
+            # Clear the current rectangle
+            self.draw_roi.current_rect = None
+            self.window.image_container.update()
+            
+            # Update status
+            update_status("ROI reset to full frame", duration=2000)
+        except Exception as e:
+            print(f"Error resetting ROI: {str(e)}")
+            update_status("Failed to reset ROI", duration=2000)
     
     def cleanup(self):
         """Clean up resources."""
