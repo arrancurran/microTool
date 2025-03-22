@@ -106,6 +106,11 @@ class ExposureControl(NumericCameraControl):
                 self.camera_control.call_camera_command(self.command_name, "set", self.pending_value)
                 print("Successfully applied exposure value")  # Debug print
                 self._format_and_update_label(int(round(self.pending_value)))
+                
+                # Update status bar
+                if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
+                    self.window.ui_methods.status_bar_manager.update_on_control_change(self.command_name)
+                
                 self.pending_value = None
             except Exception as e:
                 print(f"Error applying exposure value: {str(e)}")

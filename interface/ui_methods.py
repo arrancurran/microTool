@@ -6,7 +6,7 @@ from .camera_controls.control_manager import CameraControlManager
 from acquisitions.snapshot import Snapshot
 from acquisitions.record_stream import RecordStream
 from .draw_roi import DrawROI
-from .status_bar_manager import StatusBarManager
+from .status_bar.status_bar_manager import StatusBarManager
 import qtawesome as qta
 import numpy as np
 import time
@@ -17,6 +17,8 @@ class UIMethods(QObject):
         """Initialize UI methods with window and camera objects."""
         super().__init__()
         self.window = window
+        # Set reference to ui_methods on window for status bar updates
+        self.window.ui_methods = self
         self.stream_camera = stream_camera
         self.camera_control = self.stream_camera.camera_control
         self.snapshot = Snapshot(stream_camera, window)
@@ -30,7 +32,7 @@ class UIMethods(QObject):
         
         # Initialize status bar manager
         self.status_bar_manager = StatusBarManager(window, self.camera_control)
-        self.status_bar_manager.update_all()  # Initial update
+        self.status_bar_manager.initialize_items()  # Initialize all status bar items
         
         # Connect the Apply ROI button
         self.window.apply_roi_button.clicked.connect(self.handle_apply_roi)
@@ -40,12 +42,9 @@ class UIMethods(QObject):
         # Verify exposure control was initialized
         exposure_control = self.control_manager.get_control('exposure')
         if exposure_control:
-            print("Exposure control initialized successfully")  # Debug print
-            # Test getting current exposure
-            current = self.camera_control.call_camera_command("exposure", "get")
-            print(f"Current exposure: {current}")  # Debug print
+            print("Exposure control initialized successfully")
         else:
-            print("Warning: Exposure control not initialized")  # Debug print
+            print("Warning: Exposure control not initialized")
         self.original_image_size = None
 
     def handle_mouse_press(self, event):
@@ -82,7 +81,7 @@ class UIMethods(QObject):
             # Start recording
             if self.record_stream.start_recording():
                 self.window.start_recording.is_recording = True
-                self.window.start_recording.setIcon(qta.icon("fa5s.stop", color='red'))
+                self.window.start_recording.setIcon(qta.icon("fa5s.stop-circle", color='red'))
             else:
                 update_status("Failed to Start Recording", duration=2000)
         else:
@@ -143,15 +142,6 @@ class UIMethods(QObject):
 
         # Update the histogram for all ROI sizes
         calc_img_hist(self.window, np_image_data)
-        
-        # Update status bar information less frequently
-        current_time = time.time()
-        if not hasattr(self, 'last_status_update'):
-            self.last_status_update = 0
-            self.status_bar_manager.update_all()
-        elif current_time - self.last_status_update >= 0.5:  # Update status bar every 500ms
-            self.status_bar_manager.update_all()
-            self.last_status_update = current_time
     
     def handle_apply_roi(self):
         """Handle Apply ROI button click."""
@@ -177,6 +167,9 @@ class UIMethods(QObject):
             self.window.roi_offset_x.setValue(new_offset_x)
             self.window.roi_offset_y.setValue(new_offset_y)
             
+            # Update status bar
+            self.status_bar_manager.update_on_control_change("roi")
+            
             # Update status
             update_status("ROI Updated", duration=2000)
         else:
@@ -185,7 +178,6 @@ class UIMethods(QObject):
     def handle_reset_roi(self):
         """Handle Reset ROI button click."""
         try:
-            
             # Update the ROI spinboxes to max values
             self.window.roi_offset_x.setValue(0)
             self.window.roi_offset_y.setValue(0)
@@ -194,10 +186,12 @@ class UIMethods(QObject):
             self.window.roi_width.setValue(max_width)
             self.window.roi_height.setValue(max_height)
             
-            
             # Clear the current rectangle
             self.draw_roi.current_rect = None
             self.window.image_container.update()
+            
+            # Update status bar
+            self.status_bar_manager.update_on_control_change("roi")
             
             # Update status
             update_status("ROI Reset to Full Frame", duration=2000)

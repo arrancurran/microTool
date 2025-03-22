@@ -6,6 +6,7 @@ from typing import Dict, Type
 from .base_control import CameraControl
 from .exposure_control import ExposureControl
 from .roi_control import ROIControl
+from .framerate_control import FramerateControl
 
 class CameraControlManager:
     """Manages all camera controls and their initialization."""
@@ -14,9 +15,9 @@ class CameraControlManager:
     CONTROL_TYPES = {
         'exposure': ExposureControl,
         'roi': ROIControl,
+        'framerate': FramerateControl,
         # Add new controls like:
         # 'gain': GainControl,
-        # 'framerate': FramerateControl,
     }
     
     def __init__(self, camera_control, window):

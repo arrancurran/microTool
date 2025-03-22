@@ -80,6 +80,11 @@ class NumericCameraControl(CameraControl):
                 print(f"Applying {self.display_name} change: {self.pending_value}")  # Debug print
                 self.camera_control.call_camera_command(self.command_name, "set", self.pending_value)
                 print(f"{self.display_name} change applied successfully")  # Debug print
+                
+                # Update status bar if available
+                if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
+                    self.window.ui_methods.status_bar_manager.update_on_control_change(self.command_name)
+                
                 self.pending_value = None
             except Exception as e:
                 print(f"Error setting {self.display_name}: {str(e)}")

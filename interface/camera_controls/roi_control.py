@@ -114,6 +114,10 @@ class ROIControl(NumericCameraControl):
                 self._update_offset_limits(name)
             else:  # offset_x or offset_y
                 self._update_dimension_limits(name)
+            
+            # Update status bar
+            if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
+                self.window.ui_methods.status_bar_manager.update_on_control_change("roi")
                 
         except Exception as e:
             print(f"Error handling ROI change: {str(e)}")

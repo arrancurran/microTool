@@ -102,4 +102,28 @@ class StatusBarManager(QObject):
             self.window.streaming_bandwidth_label.setText(bandwidth_str)
         except Exception as e:
             print(f"Error updating streaming bandwidth: {str(e)}")
-            self.window.streaming_bandwidth_label.setText("0.00 MB/s") 
+            self.window.streaming_bandwidth_label.setText("0.00 MB/s")
+
+    def update_on_control_change(self, control_name):
+        """Update status bar based on which control changed."""
+        print(f"Status bar update triggered for control: {control_name}")  # Debug print
+        try:
+            if control_name == "roi":
+                print("Updating ROI-related status bar information")  # Debug print
+                self.update_roi_data()
+                self.update_image_size()
+                self.update_streaming_bandwidth()
+                print("ROI status bar update complete")  # Debug print
+            elif control_name == "framerate":
+                print("Updating framerate-related status bar information")  # Debug print
+                self.update_framerate()
+                self.update_streaming_bandwidth()
+                print("Framerate status bar update complete")  # Debug print
+            elif control_name == "exposure":
+                print("Exposure changes don't affect status bar directly")  # Debug print
+                # Exposure changes don't affect status bar directly
+                pass
+            else:
+                print(f"Unknown control name: {control_name}")  # Debug print
+        except Exception as e:
+            print(f"Error updating status bar for {control_name}: {str(e)}")  # Debug print 
