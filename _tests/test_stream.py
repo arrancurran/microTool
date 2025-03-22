@@ -32,7 +32,7 @@ def test_stream():
 
     # Set exposure
     print("Setting camera exposure...")
-    camera_ctrl.call_camera_command("exposure", "set", 400)
+    camera_ctrl.call_camera_command("exposure", "set", 40)
     camera_ctrl.call_camera_command("exposure_min", "get")
 
     # Set target frame rate
@@ -52,7 +52,8 @@ def test_stream():
                 # Capture frame
                 camera_ctrl.get_image()
                 frame = camera_ctrl.get_image_data()
-                
+                timestamp = camera_ctrl.get_image_timestamp()
+                print(f'Timestamp: {timestamp}')
                 if frame is not None:
                     # Display the frame
                     cv2.imshow("Camera Stream", frame)

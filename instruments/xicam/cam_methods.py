@@ -223,7 +223,10 @@ class CameraControl:
     
     def get_image_timestamp(self):
         if self.image:
-            return self.image.tsUSec
+            tsSec = self.image.tsSec
+            tsUSec = self.image.tsUSec
+            timestamp = tsSec + tsUSec / 1e6
+            return timestamp
         else:
             print("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
     

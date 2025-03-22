@@ -24,14 +24,21 @@ def test_camera():
         print("Connecting to camera...")
         camera_sequences.connect_camera()
         
+        # Start camera acquisition
+        print("Starting camera acquisition...")
+        camera_ctrl.start_camera()
+        
         # Try to get one frame
         print("Attempting to capture a frame...")
         camera_ctrl.get_image()
+        timestamp = camera_ctrl.get_image_timestamp()
+        print(f'Timestamp: {timestamp}')
         frame = camera_ctrl.get_image_data()
         
         if frame is not None:
             print("Successfully captured frame!")
             print(f"Frame shape: {frame.shape}")
+            
             # Display the frame
             cv2.imshow("Test Frame", frame)
             cv2.waitKey(0)  # Wait for a key press
@@ -45,6 +52,7 @@ def test_camera():
         # Clean up
         print("Cleaning up...")
         try:
+            camera_ctrl.stop_camera()  # Stop acquisition before disconnecting
             camera_sequences.disconnect_camera()
         except:
             pass

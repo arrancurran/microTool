@@ -102,10 +102,11 @@ class RecordStream:
         while self.is_recording:
             try:
                 self.camera_control.get_image()
+                timestamp = self.camera_control.get_image_timestamp()
                 frame = self.camera_control.get_image_data()
                 
                 if frame is not None:
-                    if not self.queue.put_frame(frame, time.time()):
+                    if not self.queue.put_frame(frame, timestamp):
                         # If queue is full, stop recording
                         print("Queue full - Stopping Stream")
                         update_status("Queue full - Stopping Stream", duration=2000)
