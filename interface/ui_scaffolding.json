@@ -13,7 +13,7 @@
             "roi_data": "0x0",
             "framerate": "@ 0 Hz",
             "image_size_on_disk": "0.00 MB",
-            "image_size_on_disk_bandwidth": "0.00 MB/s"
+            "streaming_bandwidth": "0.00 MB/s"
         }
     },
     "image_display": {

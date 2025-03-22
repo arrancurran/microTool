@@ -6,8 +6,10 @@ from .camera_controls.control_manager import CameraControlManager
 from acquisitions.snapshot import Snapshot
 from acquisitions.record_stream import RecordStream
 from .draw_roi import DrawROI
+from .status_bar_manager import StatusBarManager
 import qtawesome as qta
 import numpy as np
+import time
 
 class UIMethods(QObject):
     
@@ -25,6 +27,10 @@ class UIMethods(QObject):
         print("Initializing camera controls in UIMethods...")  # Debug print
         self.control_manager = CameraControlManager(self.camera_control, window)
         self.control_manager.initialize_controls()
+        
+        # Initialize status bar manager
+        self.status_bar_manager = StatusBarManager(window, self.camera_control)
+        self.status_bar_manager.update_all()  # Initial update
         
         # Connect the Apply ROI button
         self.window.apply_roi_button.clicked.connect(self.handle_apply_roi)
@@ -62,10 +68,10 @@ class UIMethods(QObject):
         """Handle snapshot button click."""
         if self.snapshot.save_snapshot():
             # Update status bar to show success
-            update_status("Snapshot saved", duration=2000)
+            update_status("Snapshot Saved", duration=2000)
         else:
             # Update status bar to show failure
-            update_status("Failed to save snapshot", duration=2000)
+            update_status("Failed to Save Snapshot", duration=2000)
     
     def handle_recording(self):
         """Handle record button toggle."""
@@ -78,13 +84,13 @@ class UIMethods(QObject):
                 self.window.start_recording.is_recording = True
                 self.window.start_recording.setIcon(qta.icon("fa5s.stop", color='red'))
             else:
-                update_status("Failed to start recording", duration=2000)
+                update_status("Failed to Start Recording", duration=2000)
         else:
             # Stop recording
             self.record_stream.stop_recording()
             self.window.start_recording.is_recording = False
             self.window.start_recording.setIcon(qta.icon("fa5.dot-circle"))
-            update_status("Recording stopped", duration=2000)
+            update_status("Recording Stopped", duration=2000)
     
     def update_ui_image(self):
         """Get the latest frame from the stream and update the UI image display."""
@@ -135,8 +141,17 @@ class UIMethods(QObject):
         self.window.image_container.setPixmap(final_image)
         self.original_image_size = (width, height)
 
-        # Update the histogram 
+        # Update the histogram for all ROI sizes
         calc_img_hist(self.window, np_image_data)
+        
+        # Update status bar information less frequently
+        current_time = time.time()
+        if not hasattr(self, 'last_status_update'):
+            self.last_status_update = 0
+            self.status_bar_manager.update_all()
+        elif current_time - self.last_status_update >= 0.5:  # Update status bar every 500ms
+            self.status_bar_manager.update_all()
+            self.last_status_update = current_time
     
     def handle_apply_roi(self):
         """Handle Apply ROI button click."""
@@ -163,9 +178,9 @@ class UIMethods(QObject):
             self.window.roi_offset_y.setValue(new_offset_y)
             
             # Update status
-            update_status("ROI applied", duration=2000)
+            update_status("ROI Updated", duration=2000)
         else:
-            update_status("No ROI selected", duration=2000)
+            update_status("No ROI Selected", duration=2000)
     
     def handle_reset_roi(self):
         """Handle Reset ROI button click."""
@@ -185,10 +200,10 @@ class UIMethods(QObject):
             self.window.image_container.update()
             
             # Update status
-            update_status("ROI reset to full frame", duration=2000)
+            update_status("ROI Reset to Full Frame", duration=2000)
         except Exception as e:
             print(f"Error resetting ROI: {str(e)}")
-            update_status("Failed to reset ROI", duration=2000)
+            update_status("Failed to Reset ROI", duration=2000)
     
     def cleanup(self):
         """Clean up resources."""

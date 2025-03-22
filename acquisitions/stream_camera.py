@@ -10,21 +10,33 @@ class CameraThread(QThread):
         super().__init__()
         self.camera_control = camera_control
         self.running = True
-        self.frame_interval = 16  # ~60 Hz (1000ms/60 ≈ 16.67ms)
+        self.frame_interval = 33  # Fixed 30 Hz (1000ms/30 ≈ 33.33ms)
+        self.frame_count = 0
+        self.last_fps_update = 0
+        self.fps_update_interval = 1.0  # Update FPS every second
         
     def run(self):
         """Main thread loop"""
         while self.running:
             try:
+                # Sleep for the frame interval before getting next image
+                time.sleep(self.frame_interval / 1000.0)
+                
                 # Get image from camera
                 self.camera_control.get_image()
                 image_data = self.camera_control.get_image_data()
                 
                 if image_data is not None:
                     self.frame_ready.emit(image_data)
+                    self.frame_count += 1
                 
-                # Sleep for the remaining time to maintain frame rate
-                time.sleep(max(0, self.frame_interval / 1000.0))
+                # Update FPS counter every second
+                current_time = time.time()
+                if current_time - self.last_fps_update >= self.fps_update_interval:
+                    fps = self.frame_count / (current_time - self.last_fps_update)
+                    print(f"Camera FPS: {fps:.1f}")
+                    self.frame_count = 0
+                    self.last_fps_update = current_time
                 
             except Exception as e:
                 print(f"Error in camera thread: {str(e)}")

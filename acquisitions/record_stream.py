@@ -109,8 +109,8 @@ class RecordStream:
                 if frame is not None:
                     if not self.queue.put_frame(frame, timestamp):
                         # If queue is full, stop recording
-                        print("Queue full - Stopping Stream")
-                        update_status("Queue full - Stopping Stream", duration=2000)
+                        print("Queue Full - Stopping Stream")
+                        update_status("Queue Full - Stopping Stream", duration=2000)
                         self.is_recording = False
                         self.camera_control.stop_camera()
                         
@@ -125,7 +125,6 @@ class RecordStream:
                         # Update UI state
                         self.window.start_recording.is_recording = False
                         self.window.start_recording.setIcon(qta.icon("fa5.dot-circle"))
-                        update_status("Recording Stopped - Saving Remaining Data", duration=2000)
                         break
                         
             except Exception as e:

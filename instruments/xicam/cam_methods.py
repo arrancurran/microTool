@@ -91,21 +91,21 @@ class CameraControl:
                     continue
                 
                 friendly_name, method, value, result_queue = command
-                print(f"Processing command: {method} {friendly_name} = {value}")  # Debug print
+                # print(f"Processing command: {method} {friendly_name} = {value}")  # Debug print
                 
                 with self.camera_lock:
                     try:
                         result = self._execute_camera_command(friendly_name, method, value)
                         if result_queue:
                             result_queue.put(result)
-                            print(f"Command result queued: {result}")  # Debug print
+                            # print(f"Command result queued: {result}")  # Debug print
                     except Exception as e:
                         print(f"Error executing camera command: {str(e)}")
                         if result_queue:
                             result_queue.put(None)
                 
                 self.command_queue.task_done()
-                print(f"Command processed: {method} {friendly_name}")  # Debug print
+                # print(f"Command processed: {method} {friendly_name}")  # Debug print
             except:
                 # Timeout on queue.get, continue loop
                 continue
@@ -150,7 +150,7 @@ class CameraControl:
                 return value
             else:  # method == "get"
                 result = camera_method()
-                print(f"Got {friendly_name}: {result}")  # Debug print
+                # print(f"Got {friendly_name}: {result}")  # Debug print
                 return result
         except Exception as e:
             print(f"Error executing camera command {method_name}: {str(e)}")
@@ -158,7 +158,7 @@ class CameraControl:
     
     def call_camera_command(self, friendly_name, method, value=None):
         """Queue a camera command and wait for its result."""
-        print(f"Queueing camera command: {method} {friendly_name} = {value}")  # Debug print
+        # print(f"Queueing camera command: {method} {friendly_name} = {value}")  # Debug print
         result_queue = Queue() if method == "get" else None
         self.command_queue.put((friendly_name, method, value, result_queue))
         

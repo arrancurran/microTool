@@ -43,7 +43,7 @@ class ExposureControl(NumericCameraControl):
                 print("Failed to get exposure settings from camera")
                 return False
                 
-            print(f"Got exposure settings: {settings}")  # Debug print
+            # print(f"Got exposure settings: {settings}")  # Debug print
             
             # Convert float values to integers for the slider
             min_val = int(round(settings['min']))

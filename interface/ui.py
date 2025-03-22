@@ -44,6 +44,19 @@ class ui(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui_scaffolding = self.load_json('ui_scaffolding.json')
+        
+        # Initialize status bar first
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        
+        # Create status bar labels
+        for label_name, label_text in self.ui_scaffolding['status_bar']['labels'].items():
+            label = QLabel()
+            setattr(self, f"{label_name}_label", label)
+            self.status_bar.addWidget(label)
+            label.setText(label_text)
+            
+        # Build the rest of the UI
         self.build_ui()
         # self.apply_styles()  # Apply styling after UI is built
 
@@ -140,17 +153,7 @@ class ui(QMainWindow):
         toolbar = QToolBar("Main Toolbar")
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
 
-        """Status Bar"""
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-       
-        """Create and add QLabel widgets for each piece of information"""
-        for label_name, label_text in self.ui_scaffolding['status_bar']['labels'].items():
-            label = QLabel()
-            setattr(self, f"{label_name}_label", label)
-            self.status_bar.addWidget(label)
-            label.setText(label_text)
-
+        """Add toolbar actions"""
         for action, icon_path in self.ui_scaffolding['toolbar']['icons'].items():
             action_obj = QAction(qta.icon(icon_path), action, self)
             toolbar.addAction(action_obj)
