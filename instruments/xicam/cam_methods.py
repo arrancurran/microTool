@@ -48,10 +48,10 @@ class CameraControl:
         image = cam.get_image()
         cam.stop_camera()
     """
-    """
-    TODO: We should set a custom size for ImageObject() according to the camera resolution
-    TODO: We should also set the image format to mono8 or mono16 depending on the camera
-    """
+    
+    # TODO: We should set a custom size for ImageObject() according to the camera resolution
+    # TODO: We should also set the image format to mono8 or mono16 depending on the camera
+
     def __init__(self):
         
         """Initialize the camera object."""
