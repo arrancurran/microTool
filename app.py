@@ -28,7 +28,7 @@ class microTool():
         set_main_window(self.window)
 
         """Connect the stream to update the image display"""
-        self.stream_camera.frame_ready.connect(self.ui_methods.update_ui_image)
+        self.stream_camera.frame_available.connect(self.ui_methods.update_ui_image)
 
         """Connect the window close event to our cleanup method"""
         self.window.closeEvent = self.cleanup
@@ -38,12 +38,6 @@ class microTool():
         self.window.stop_stream.triggered.connect(self.stream_camera.stop_stream)
         self.window.snapshot.triggered.connect(self.ui_methods.handle_snapshot)
         self.window.start_recording.triggered.connect(self.ui_methods.handle_recording)
-       
-        """Connect the stream to update the image display"""
-        self.stream_camera.frame_ready.connect(self.ui_methods.update_ui_image)
-       
-        """Connect the window close event to our cleanup method"""
-        self.window.closeEvent = self.cleanup
     
     """Clean up resources before the application closes."""
     def cleanup(self, event):

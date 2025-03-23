@@ -1,11 +1,30 @@
-from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
+"""
+Camera streaming module that handles continuous frame capture in a background thread.
+Uses QThread to stream frames from a Ximea camera without blocking the UI.
+Emits signals when new frames are ready for display.
+"""
+
+from PyQt6.QtCore import QObject, pyqtSignal, QThread
 import queue
 import time
 
 class CameraThread(QThread):
+    """
+    Handles continuous camera frame capture in a background thread.
     
-    """Signal to emit when a new frame is ready"""
-    frame_ready = pyqtSignal(object) 
+    Called by:
+    - interface/ui_methods.py: UIMethods uses CameraThread for streaming
+    - acquisitions/record_stream.py: RecordStream uses CameraThread for recording
+    
+    Example usage:
+        camera_control = CameraControl()
+        thread = CameraThread(camera_control)
+        thread.frame_captured.connect(handle_new_frame)
+        thread.start()
+        # ... later ...
+        thread.stop()
+    """
+    frame_captured = pyqtSignal(object) # Signal to emit when a new frame has been captured from the camera
     
     def __init__(self, camera_control):
         
@@ -20,19 +39,18 @@ class CameraThread(QThread):
         """Main thread loop"""
         while self.running:
             try:
-                """Sleep for the appropriate amount of time to achieve the desired frame rate"""
-                time.sleep(1/self.frame_Hz)
+                time.sleep(1/self.frame_Hz) # Sleep for the appropriate amount of time to achieve the desired frame rate
                 
                 """Get image from camera"""
                 self.camera_control.get_image()
                 image_data = self.camera_control.get_image_data()
                 
                 if image_data is not None:
-                    self.frame_ready.emit(image_data)
+                    self.frame_captured.emit(image_data)
                 
             except Exception as e:
                 print(f"Error in camera thread: {str(e)}")
-                time.sleep(0.1)  # Sleep briefly on error to prevent tight loop
+                time.sleep(0.1)  # Sleep briefly on error to prevent hammering the CPU on error
     
     def stop(self):
         
@@ -41,9 +59,22 @@ class CameraThread(QThread):
         self.wait()
 
 class StreamCamera(QObject):
+    """
+    Manages camera streaming with frame buffering and thread control.
     
-    """Signal to emit when a new frame is ready"""
-    frame_ready = pyqtSignal() 
+    Called by:
+    - interface/ui_methods.py: UIMethods uses StreamCamera for live display
+    - acquisitions/record_stream.py: RecordStream uses StreamCamera for recording
+    
+    Example usage:
+        camera = CameraControl()
+        stream = StreamCamera(camera)
+        stream.frame_available.connect(update_display)
+        stream.start_stream()
+        # ... later ...
+        stream.stop_stream()
+    """
+    frame_available = pyqtSignal() # Signal to emit when a new frame is available in the queue
     
     def __init__(self, camera_control):
         
@@ -59,7 +90,7 @@ class StreamCamera(QObject):
         """Start capturing frames in a separate thread."""
         if self.camera_thread is None or not self.camera_thread.isRunning():
             self.camera_thread = CameraThread(self.camera_control)
-            self.camera_thread.frame_ready.connect(self._handle_frame)
+            self.camera_thread.frame_captured.connect(self._handle_frame)
             self.camera_control.start_camera()
             self.camera_thread.start()
             print("StreamCamera.start_stream(): Camera stream started.")
@@ -69,7 +100,7 @@ class StreamCamera(QObject):
         """Handle a new frame from the camera thread"""
         if not self.streaming_queue.full():
             self.streaming_queue.put(image_data)
-            self.frame_ready.emit()
+            self.frame_available.emit()
 
     def stop_stream(self):
         

@@ -1,15 +1,37 @@
-from PyQt6.QtCore import Qt, QObject
+"""
+UI methods for handling camera controls, ROI drawing, status updates, and image display.
+Manages interaction between UI components and camera functionality.
+"""
+
 from PyQt6.QtGui import QImage, QPixmap, QPainter
-from utils import calc_img_hist, update_status
+from PyQt6.QtCore import Qt, QObject
+import time
+
+""" Import Classes """
 from .camera_controls.control_manager import CameraControlManager
-from acquisitions.snapshot import Snapshot
-from acquisitions.record_stream import RecordStream
-from .draw_roi import DrawROI
 from .status_bar.status_bar_manager import StatusBarManager
+from acquisitions.record_stream import RecordStream
+from acquisitions.snapshot import Snapshot
+from .draw_roi import DrawROI
+
+""" Import Functions """
+from utils import calc_img_hist, update_status
 import qtawesome as qta
 
 class UIMethods(QObject):
+    """
+    Manages UI interactions and camera control methods.
     
+    Called by:
+    - app.py: Main application uses UIMethods for UI-camera interaction
+    - interface/image_container.py: ImageContainer uses UIMethods for display updates
+    
+    Example usage:
+        window = ui()
+        stream_camera = StreamCamera(camera_control)
+        ui_methods = UIMethods(window, stream_camera)
+        ui_methods.update_ui_image()  # Updates display with latest frame
+    """
     def __init__(self, window, stream_camera):
         
         """Initialize UI methods with window and camera objects."""
@@ -143,7 +165,8 @@ class UIMethods(QObject):
         self.window.image_container.setPixmap(final_image)
         self.original_image_size = (width, height)
 
-        """Update the histogram for all ROI sizes"""
+        """Update the image histogram"""
+        # TODO: Should this be done here? Maybe a separate thread or multiprocessing?
         calc_img_hist(self.window, np_image_data)
     
     def handle_apply_roi(self):
@@ -175,7 +198,7 @@ class UIMethods(QObject):
             """Update status bar"""
             self.status_bar_manager.update_on_control_change("roi")
             
-            """Clear the current rectangle"""
+            """Clear the  rectangle"""
             self.draw_roi.current_rect = None
         else:
             update_status("No ROI Selected", duration=2000)
@@ -187,6 +210,7 @@ class UIMethods(QObject):
             """Update the ROI spinboxes to max values"""
             self.window.roi_offset_x.setValue(0)
             self.window.roi_offset_y.setValue(0)
+            time.sleep(0.05) # Wait for the offset to update
             max_width = int(self.camera_control.call_camera_command("width_max", "get"))
             max_height = int(self.camera_control.call_camera_command("height_max", "get"))
             self.window.roi_width.setValue(max_width)

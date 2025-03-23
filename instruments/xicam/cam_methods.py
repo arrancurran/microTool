@@ -1,16 +1,30 @@
 """
-Provides camera control and settings management for Ximea cameras. Here we define methods that speak directly to the camera using the XiAPI.
-For a different camera, we would need to rewrite this module to speak to the new camera.
+Core camera interface module that provides:
 
-CameraControl: Handles core camera operations and camera parameters through command parsing from commands.json
+1. CameraControl class for direct hardware control and parameter management
+   - Camera initialization and cleanup
+   - Image acquisition and streaming
+   - Parameter get/set via command queue
+   - Thread-safe camera access
 
-CameraSequences: Implements higher-level acquisition patterns like:
-- Time series capture
-- Continuous streaming
+2. CameraSequences class for acquisition patterns
+   - Continuous streaming
+   - Time series capture
+   - Synchronized acquisition
 
-Dependencies:
-- ximea.xiapi for low-level camera interface
-- commands.json for camera parameter definitions
+Uses Ximea's xiapi for low-level camera control. Camera commands are defined in commands.json.
+
+Called by:
+- interface/camera_controls/control_manager.py: CameraControlManager uses CameraControl for all camera operations
+- acquisitions/stream_camera.py: StreamCamera uses CameraControl for frame capture and camera control
+- interface/ui_methods.py: UIMethods connects UI actions to camera controls
+- app.py: Main application initializes CameraControl on startup
+
+Key methods called:
+- initialize_camera(): Called during app startup
+- call_camera_command(): Called by control classes to get/set parameters
+- get_image(), get_image_data(): Called by StreamCamera for frame capture
+- start_camera(), stop_camera(): Called to control acquisition
 """
 
 import json
@@ -20,27 +34,21 @@ from threading import Lock, Thread
 
 class CameraControl:
     """
-    Methods:
-        __init__(): Initializes camera connection using xiapi
-        ImageObject(): Creates image object to store camera data
-        start(): Begins camera acquisition
-        get_image(): Captures single image into image object
-        get_image_data(): Returns numpy array of image data
-        get_image_timestamp(): Returns image timestamp in microseconds
-        stop(): Stops camera acquisition
-        close(): Closes camera connection
-        call_camera_command(): Executes camera commands using friendly names from commands.json
-
-    The class uses the ximea.xiapi library to interface directly with Ximea cameras.
-    Images are stored in xiapi.Image objects which contain both pixel data and metadata.
-    See https://www.ximea.com/support/wiki/apis/XiAPI_Python_Manual
+    Called by:
+    - interface/camera_controls/control_manager.py:CameraControlManager for camera operations
+    - acquisitions/stream_camera.py:StreamCamera for frame capture
+    - interface/ui_methods.py:UIMethods for UI actions
+    - app.py:microTool for initialization
 
     Example usage:
-        ctrl = CameraControl()
-        ctrl.initialize_camera()
-        ctrl.call_camera_command("exposure", "set", 10000)  # Set 10ms exposure
-        current_exp = ctrl.call_camera_command("exposure_min", "get")  # Read minimum exposure
-
+        cam = CameraControl()
+        cam.initialize_camera()
+        cam.start_camera()
+        cam.call_camera_command("exposure", "set", 10000)  # 10ms exposure
+        image = cam.get_image()
+        cam.stop_camera()
+    """
+    """
     TODO: We should set a custom size for ImageObject() according to the camera resolution
     TODO: We should also set the image format to mono8 or mono16 depending on the camera
     """
@@ -145,17 +153,17 @@ class CameraControl:
                     elif value_type == 'int':
                         value = int(value)
                 except (ValueError, TypeError) as e:
-                    print(f"Error converting value to {value_type}: {str(e)}")
+                    print(f"CameraControl._execute_camera_command(): Error converting value to {value_type}: {str(e)}")
                     return None
                     
-                print(f"Setting {friendly_name} to {value} ({type(value)})")  # Debug print
+                print(f"CameraControl._execute_camera_command(): Setting {friendly_name} to {value} ({type(value)})")  # Debug print
                 camera_method(value)
                 return value
             else:  # method == "get"
                 result = camera_method()
                 return result
         except Exception as e:
-            print(f"Error executing camera command {method_name}: {str(e)}")
+            print(f"CameraControl._execute_camera_command(): Error executing camera command {method_name}: {str(e)}")
             return None
     
     def call_camera_command(self, friendly_name, method, value=None):
@@ -169,7 +177,7 @@ class CameraControl:
                 result = result_queue.get(timeout=2.0)  # 2 second timeout for get operations
                 return result
             except:
-                print("Timeout waiting for camera command result")
+                print("CameraControl.call_camera_command(): Timeout waiting for camera command result")
                 return None
         return None
         
@@ -193,9 +201,9 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.open_device()
-                print("CameraControl.open_camera(): Camera opened.")
+                print("CameraControl.open_camera(): Camera connection established.")
         else:
-            print("CameraControl.open_camera(): Camera not opened.")
+            print("CameraControl.open_camera(): Camera connection not established.")
 
     def ImageObject(self):
         
@@ -268,22 +276,26 @@ class CameraControl:
 
 class CameraSequences():
     """
-    CameraSequences class handles high-level camera acquisition patterns.
+    Handles high-level camera acquisition patterns like streaming and time series capture.
 
-    Methods:
-        __init__(camera_control): Takes a CameraControl instance to manage camera operations
-        connect_camera(): Initializes and starts the camera connection
-        disconnect_camera(): Stops and closes the camera connection
-        stream_camera(): Continuously captures and displays images in real-time
-        acquire_time_series(num_images): Captures a specified number of sequential images
+    Called by:
+    - app.py: Main application initializes CameraSequences on startup
+    - interface/ui_methods.py: UIMethods uses sequences for camera operations
+    - acquisitions/stream_camera.py: StreamCamera uses sequences for streaming
 
-    The class uses a CameraControl instance.
-    
     Example usage:
+        # Initialize camera control and sequences
         ctrl = CameraControl()
         sequences = CameraSequences(ctrl)
+
+        # Start streaming
         sequences.connect_camera()
-        sequences.acquire_time_series(100)  # Capture 100 images
+        sequences.stream_camera()  # Continuous acquisition
+        
+        # Or capture time series
+        sequences.acquire_time_series(100)  # 100 frames
+        
+        # Cleanup
         sequences.disconnect_camera()
     """
     def __init__(self, camera_control):

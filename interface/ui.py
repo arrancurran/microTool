@@ -1,3 +1,9 @@
+"""
+Main UI module that defines the application window and custom widgets.
+Handles layout, controls, and image display components using PyQt6.
+Provides ROI drawing capabilities and histogram visualization.
+"""
+
 from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
@@ -6,15 +12,26 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json, os
 
-""" 
-ui_layout class sets up the main window layout. It is then called in main.py.
-"""
-
 class ImageLabel(QLabel):
+    """
+    Custom QLabel subclass for handling ROI drawing interactions.
+    Manages mouse events and painting for region of interest selection.
     
+    Called by:
+    - interface/ui.py: Main UI creates ImageLabel for camera display
+    - interface/ui_methods.py: UIMethods handles the mouse/paint events
+    
+    Example usage:
+        image_container = ImageLabel()
+        image_container.ui_methods = ui_methods  # Connect UI methods
+        image_container.setPixmap(camera_frame)  # Display camera frame
+        # ROI drawing handled automatically via mouse events
+    """
+
     #    TODO: Should we move this to ui_methods?
-    """Custom QLabel that handles mouse events for ROI drawing"""
     def __init__(self, parent=None):
+        
+        """Initialize the ImageLabel"""
         super().__init__(parent)
         self.setMouseTracking(True)
         self.ui_methods = None
@@ -48,7 +65,12 @@ class ImageLabel(QLabel):
 
 class ui(QMainWindow):
     """
-    Base interface class that contains all UI elements without hardware dependencies.
+    Main application window class that manages the UI components.
+    Handles UI initialization, status bar management, and UI customization.
+    
+    Called by:
+    - app.py: Main application creates the ui instance
+    - interface/ui_methods.py: UIMethods manages UI interactions
     """
     def __init__(self):
         
