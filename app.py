@@ -1,5 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer
 from interface.ui import ui
 from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
@@ -27,8 +28,14 @@ class microTool():
         """Set the main window"""
         set_main_window(self.window)
 
-        """Connect the stream to update the image display"""
-        self.stream_camera.frame_available.connect(self.ui_methods.update_ui_image)
+        # Create a timer to update UI at a reasonable rate
+        self.ui_update_timer = QTimer()
+        self.ui_update_timer.timeout.connect(self.ui_methods.update_ui_image)
+        self.ui_update_timer.start(33)  # ~30 FPS for UI updates
+        
+        # Disconnect direct connection
+        # """Connect the stream to update the image display"""
+        # self.stream_camera.frame_available.connect(self.ui_methods.update_ui_image)
 
         """Connect the window close event to our cleanup method"""
         self.window.closeEvent = self.cleanup
