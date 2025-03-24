@@ -1,0 +1,39 @@
+{
+    "set": [
+        {"cmd": "exposure", "type": "float", "name": "exposure"},
+        {"cmd": "framerate", "type": "float", "name": "framerate"},
+        {"cmd": "width", "type": "int", "name": "width"},
+        {"cmd": "height", "type": "int", "name": "height"},
+        {"cmd": "offsetX", "type": "int", "name": "offset_x"},
+        {"cmd": "offsetY", "type": "int", "name": "offset_y"}
+    ],
+    "get": [
+        {"cmd": "device_name", "type": "str", "name": "device_name"},
+        {"cmd": "device_model_id", "type": "int", "name": "model_id"},
+        {"cmd": "device_type", "type": "str", "name": "device_type"},
+        {"cmd": "device_sn", "type": "str", "name": "serial_number"},
+        {"cmd": "exposure", "type": "float", "name": "exposure"},
+        {"cmd": "framerate", "type": "float", "name": "framerate"},
+        {"cmd": "width", "type": "int", "name": "width"},
+        {"cmd": "height", "type": "int", "name": "height"},
+        {"cmd": "offsetX", "type": "int", "name": "offset_x"},
+        {"cmd": "offsetY", "type": "int", "name": "offset_y"},
+        {"cmd": "exposure_minimum", "type": "float", "name": "exposure_min"},
+        {"cmd": "exposure_maximum", "type": "float", "name": "exposure_max"},
+        {"cmd": "framerate_minimum", "type": "float", "name": "framerate_min"},
+        {"cmd": "framerate_maximum", "type": "float", "name": "framerate_max"},
+        {"cmd": "framerate_increment", "type": "float", "name": "framerate_inc"},
+        {"cmd": "width_minimum", "type": "int", "name": "width_min"},
+        {"cmd": "width_maximum", "type": "int", "name": "width_max"},
+        {"cmd": "width_increment", "type": "int", "name": "width_inc"},
+        {"cmd": "height_minimum", "type": "int", "name": "height_min"},
+        {"cmd": "height_maximum", "type": "int", "name": "height_max"},
+        {"cmd": "height_increment", "type": "int", "name": "height_inc"},
+        {"cmd": "offsetX_minimum", "type": "int", "name": "offset_x_min"},
+        {"cmd": "offsetX_maximum", "type": "int", "name": "offset_x_max"},
+        {"cmd": "offsetX_increment", "type": "int", "name": "offset_x_inc"},
+        {"cmd": "offsetY_minimum", "type": "int", "name": "offset_y_min"},
+        {"cmd": "offsetY_maximum", "type": "int", "name": "offset_y_max"},
+        {"cmd": "offsetY_increment", "type": "int", "name": "offset_y_inc"}
+    ]
+}
