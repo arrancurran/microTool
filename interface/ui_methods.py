@@ -122,48 +122,59 @@ class UIMethods(QObject):
         if np_image_data is None:
             return
         
-        """Update the main image display"""
-        height, width = np_image_data.shape
-        bytes_per_line = width
-        image_data = QImage(np_image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
-        image = QPixmap(image_data)
+        # Cache the container size and check if it's changed
+        current_size = self.window.image_container.size()
+        size_changed = not hasattr(self, '_last_container_size') or self._last_container_size != current_size
+        self._last_container_size = current_size
+
         
-        """Get container size"""
-        container_size = self.window.image_container.size()
         
-        """Calculate scaling to fit the image while maintaining aspect ratio"""
-        scaled_image = image.scaled(container_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        
-        """Calculate the offset to center the image"""
-        offset_x = (container_size.width() - scaled_image.width()) // 2
-        offset_y = (container_size.height() - scaled_image.height()) // 2
-        
-        """Calculate the scale factors"""
-        scale_factor_x = scaled_image.width() / width
-        scale_factor_y = scaled_image.height() / height
-        
-        """Update the ROI drawing parameters"""
-        self.draw_roi.update_scale_and_offset(
-            scale_factor_x, scale_factor_y, 
-            offset_x, offset_y,
-            scaled_image.width(), scaled_image.height(),
-            width, height
-        )
-        
-        """Create a new pixmap for drawing"""
-        final_image = QPixmap(container_size)
-        final_image.fill(Qt.GlobalColor.transparent)
-        
-        """Draw the scaled image"""
-        painter = QPainter(final_image)
-        painter.drawPixmap(offset_x, offset_y, scaled_image)
-        
-        """Draw the ROI if any"""
-        self.draw_roi.draw_rectangle(painter, self.window.image_container)
-        painter.end()
-        
-        self.window.image_container.setPixmap(final_image)
-        self.original_image_size = (width, height)
+        # Only recalculate scaling if the image size or container has changed
+        if not hasattr(self, '_cached_image') or size_changed or self._cached_image_shape != np_image_data.shape:
+            self._cached_image_shape = np_image_data.shape
+            # Do the expensive scaling calculations here
+            """Update the main image display"""
+            height, width = np_image_data.shape
+            bytes_per_line = width
+            image_data = QImage(np_image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
+            image = QPixmap(image_data)
+            
+            """Get container size"""
+            container_size = self.window.image_container.size()
+            
+            """Calculate scaling to fit the image while maintaining aspect ratio"""
+            scaled_image = image.scaled(container_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            
+            """Calculate the offset to center the image"""
+            offset_x = (container_size.width() - scaled_image.width()) // 2
+            offset_y = (container_size.height() - scaled_image.height()) // 2
+            
+            """Calculate the scale factors"""
+            scale_factor_x = scaled_image.width() / width
+            scale_factor_y = scaled_image.height() / height
+            
+            """Update the ROI drawing parameters"""
+            self.draw_roi.update_scale_and_offset(
+                scale_factor_x, scale_factor_y, 
+                offset_x, offset_y,
+                scaled_image.width(), scaled_image.height(),
+                width, height
+            )
+            
+            """Create a new pixmap for drawing"""
+            final_image = QPixmap(container_size)
+            final_image.fill(Qt.GlobalColor.transparent)
+            
+            """Draw the scaled image"""
+            painter = QPainter(final_image)
+            painter.drawPixmap(offset_x, offset_y, scaled_image)
+            
+            """Draw the ROI if any"""
+            self.draw_roi.draw_rectangle(painter, self.window.image_container)
+            painter.end()
+            
+            self.window.image_container.setPixmap(final_image)
+            self.original_image_size = (width, height)
 
         """Update the image histogram"""
         # TODO: Should this be done here? Maybe a separate thread or multiprocessing?
