@@ -96,11 +96,20 @@ class StreamCamera(QObject):
             print("StreamCamera.start_stream(): Camera stream started.")
 
     def _handle_frame(self, image_data):
-       
-        """Handle a new frame from the camera thread"""
-        if not self.streaming_queue.full():
-            self.streaming_queue.put(image_data)
-            self.frame_available.emit()
+        """Handle a new frame from the camera thread with throttling"""
+        current_time = time.time()
+        
+        # Only process frame if enough time has passed (limit to 30 FPS for UI)
+        if not hasattr(self, '_last_frame_time') or (current_time - self._last_frame_time) >= 0.033:
+            self._last_frame_time = current_time
+            
+            # Process frame as normal
+            try:
+                if not self.streaming_queue.full():
+                    self.streaming_queue.put(image_data)
+                    self.frame_available.emit()
+            except Exception as e:
+                print(f"Error handling frame: {str(e)}")
 
     def stop_stream(self):
         
