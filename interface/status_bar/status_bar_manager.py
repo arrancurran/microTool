@@ -2,8 +2,7 @@
 Manager for updating the status bar with camera information.
 """
 from PyQt6.QtCore import QObject, QTimer
-from typing import Dict, Type, Optional
-import time
+from typing import Dict, Type
 
 from .status_bar_item import StatusBarItem
 from .items import (
@@ -34,7 +33,8 @@ class StatusBarManager(QObject):
         self.items: Dict[str, StatusBarItem] = {}
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_all)
-        self.update_timer.start(500)  # Update every 500ms
+        # TODO: We need to change this to only update when a control changes
+        self.update_timer.start(200)  # Update every 200ms
         
     def initialize_items(self):
         """Initialize all registered status bar items."""
