@@ -5,7 +5,7 @@ from interface.ui import ui
 from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
 from acquisitions.stream_camera import StreamCamera
-from utils.status import set_main_window
+from interface.status_bar.update_notif import set_main_window
 
 class microTool():
     def __init__(self):

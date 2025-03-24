@@ -15,7 +15,8 @@ from acquisitions.snapshot import Snapshot
 from .draw_roi import DrawROI
 
 """ Import Functions """
-from utils import calc_img_hist, update_status
+from utils import calc_img_hist
+from interface.status_bar.update_notif import update_notif
 import qtawesome as qta
 
 class UIMethods(QObject):
@@ -85,10 +86,10 @@ class UIMethods(QObject):
         """Handle snapshot button click."""
         if self.snapshot.save_snapshot():
             # Update status bar to show success
-            update_status("Snapshot Saved", duration=2000)
+            update_notif("Snapshot Saved", duration=2000)
         else:
             # Update status bar to show failure
-            update_status("Failed to Save Snapshot", duration=2000)
+            update_notif("Failed to Save Snapshot", duration=2000)
     
     def handle_recording(self):
         
@@ -105,7 +106,7 @@ class UIMethods(QObject):
                 icon_color = self.window.ui_scaffolding['toolbar']['icons']['Start Recording']['Stop Recording']['icon_color']
                 self.window.start_recording.setIcon(qta.icon(stop_icon, color=icon_color))
             else:
-                update_status("Failed to Start Recording", duration=2000)
+                update_notif("Failed to Start Recording", duration=2000)
         else:
             # Stop recording
             self.record_stream.stop_recording()
@@ -113,7 +114,7 @@ class UIMethods(QObject):
             # Get the start recording icon from JSON
             start_icon = self.window.ui_scaffolding['toolbar']['icons']['Start Recording']['icon']
             self.window.start_recording.setIcon(qta.icon(start_icon))
-            update_status("Recording Stopped", duration=2000)
+            update_notif("Recording Stopped", duration=2000)
     
     def update_ui_image(self):
         
@@ -212,7 +213,7 @@ class UIMethods(QObject):
             """Clear the  rectangle"""
             self.draw_roi.current_rect = None
         else:
-            update_status("No ROI Selected", duration=2000)
+            update_notif("No ROI Selected", duration=2000)
     
     def handle_reset_roi(self):
         
@@ -236,7 +237,7 @@ class UIMethods(QObject):
             
         except Exception as e:
             print(f"Error resetting ROI: {str(e)}")
-            update_status("Failed to Reset ROI", duration=2000)
+            update_notif("Failed to Reset ROI", duration=2000)
     
     def cleanup(self):
         

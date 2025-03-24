@@ -3,7 +3,8 @@ from datetime import datetime
 import time
 from .log_HDF5 import HDF5Logger
 from .logging_queue import LoggingQueue
-from utils import update_status, get_computer_name
+from interface.status_bar.update_notif import update_notif
+from utils import get_computer_name
 import qtawesome as qta
 
 class RecordStream:
@@ -68,12 +69,12 @@ class RecordStream:
                 raise Exception("Failed to start saving thread")
             
             self.camera_control.start_camera()
-            update_status("Recording Live Stream")
+            update_notif("Recording Live Stream")
             return True
             
         except Exception as e:
             print(f"Error Starting Recording: {e}")
-            update_status(f"Error Starting Recording: {e}")
+            update_notif(f"Error Starting Recording: {e}")
             self.is_recording = False
             self.logger.stop_recording()
             return False
@@ -110,7 +111,7 @@ class RecordStream:
                     if not self.queue.put_frame(frame, timestamp):
                         # If queue is full, stop recording
                         print("Queue Full - Stopping Stream")
-                        update_status("Queue Full - Stopping Stream", duration=2000)
+                        update_notif("Queue Full - Stopping Stream", duration=2000)
                         self.is_recording = False
                         self.camera_control.stop_camera()
                         

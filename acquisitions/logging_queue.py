@@ -1,9 +1,7 @@
 import threading
 from queue import Queue, Empty, Full
 import psutil
-import time
-from datetime import datetime
-from utils.status import update_status
+from interface.status_bar.update_notif import update_notif
 
 class LoggingQueue:
     """Handles the queue setup and management for frame logging."""
@@ -40,10 +38,10 @@ class LoggingQueue:
         print(f"Queue size set to {queue_size_elements:.1f} elements ({(queue_size_GB)} GB)")
         return int(queue_size_elements)
         
-    def _update_status(self, message):
+    def _update_notif(self, message):
         """Update status bar and print message."""
         print(message)
-        update_status(message)
+        update_notif(message)
         
     def _format_size(self, bytes_size):
         """Format bytes to human readable size."""

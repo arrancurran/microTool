@@ -20,7 +20,7 @@ def set_main_window(window):
     global _main_window
     _main_window = window
 
-def update_status(message: str, duration: Optional[int] = None):
+def update_notif(message: str, duration: Optional[int] = None):
     """
     Update the status bar message in the main window.
     This function can be called from anywhere in the project to update the status bar.
@@ -31,16 +31,16 @@ def update_status(message: str, duration: Optional[int] = None):
                  If None, the message will remain until the next update.
     
     Example usage:
-        from utils.status import update_status
+        from utils.status import update_notif
         
         # Update status with a temporary message
-        update_status("Processing...", duration=2000)  # Shows for 2 seconds
+        update_notif("Processing...", duration=2000)  # Shows for 2 seconds
         
         # Update status with a permanent message
-        update_status("Ready")
+        update_notif("Ready")
         
         # Update status with a progress message
-        update_status(f"Processing frame {current}/{total}")
+        update_notif(f"Processing frame {current}/{total}")
     """
     if _main_window is None:
         print(f"Warning: Main window not set. Status message: {message}")

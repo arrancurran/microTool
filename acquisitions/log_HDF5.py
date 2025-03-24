@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 import time
 import threading
-from utils import update_status
+from interface.status_bar.update_notif import update_notif
 
 class HDF5Logger:
     """Handles saving image data to HDF5 files."""
@@ -124,7 +124,7 @@ class HDF5Logger:
         """Update status message with saving progress."""
         queue_size = queue.get_queue_size()
         
-        update_status(f"Saving Remaining Data in Queue... {queue_size}")
+        update_notif(f"Saving Remaining Data in Queue... {queue_size}")
                 
     def cleanup(self, queue, was_streaming, window):
         """Handle cleanup after recording stops."""
@@ -182,14 +182,14 @@ class HDF5Logger:
                 print(f"Warning: {queue.frames_recorded - frames_handled} frames were lost during cleanup")
             
             # Show completion message
-            update_status("Acquisition finished and saved to disk.", duration=2000)
+            update_notif("Acquisition finished and saved to disk.", duration=2000)
             
             # Restart streaming if it was active
             if was_streaming:
                 window.start_stream.trigger()
                 
         except Exception as e:
-            update_status(f"Error during cleanup: {e}", duration=2000)
+            update_notif(f"Error during cleanup: {e}", duration=2000)
             
         finally:
             self._cleanup()
