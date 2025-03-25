@@ -131,8 +131,6 @@ class UIMethods(QObject):
         size_changed = not hasattr(self, '_last_container_size') or self._last_container_size != current_size
         self._last_container_size = current_size
 
-        
-        
         # Only recalculate scaling if the image size or container has changed
         if not hasattr(self, '_cached_image') or size_changed or self._cached_image_shape != np_image_data.shape:
             self._cached_image_shape = np_image_data.shape
@@ -198,11 +196,15 @@ class UIMethods(QObject):
 
             """Get current ROI offset"""
             current_offset_x = self.window.roi_offset_x.value()
+            logger.debug(f"Current ROI offset X: {current_offset_x}")
             current_offset_y = self.window.roi_offset_y.value()
+            logger.debug(f"Current ROI offset Y: {current_offset_y}")
             
             """Add current offset to the new rectangle position"""
             new_offset_x = current_offset_x + x
+            logger.debug(f"New ROI offset X: {new_offset_x}")
             new_offset_y = current_offset_y + y
+            logger.debug(f"New ROI offset Y: {new_offset_y}")
             
             """Sanity check the ROI values"""
             width = self._sanity_check_roi("width", width)
@@ -215,6 +217,7 @@ class UIMethods(QObject):
             """Update the ROI spinboxes"""
             self.window.roi_width.setValue(width)
             self.window.roi_height.setValue(height)
+            time.sleep(0.2) # Wait for the offset to update
             self.window.roi_offset_x.setValue(new_offset_x)
             self.window.roi_offset_y.setValue(new_offset_y)
             

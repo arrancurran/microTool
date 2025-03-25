@@ -52,13 +52,19 @@ class ROIControl(NumericCameraControl):
                     max_val = self.camera_control.call_camera_command(f"{command}_max", "get")
                     inc_val = self.camera_control.call_camera_command(f"{command}_inc", "get")
                     current = self.camera_control.call_camera_command(command, "get")
-                    
+                    # Add detailed debug logging
+                    logger.debug(f"Setting up {control_name}:")
+                    logger.debug(f"  min_val: {min_val}")
+                    logger.debug(f"  max_val: {max_val}")
+                    logger.debug(f"  inc_val: {inc_val}")
+                    logger.debug(f"  current: {current}")                    
                     
                     if all(v is not None for v in [min_val, max_val, inc_val, current]):
                         # Configure spinbox
                         spinbox.setMinimum(min_val)
                         spinbox.setMaximum(max_val)
                         spinbox.setSingleStep(inc_val)
+                        spinbox.setValue(current)
                         
                         logger.debug(f"{control_name} control set up with max: {max_val}, min: {min_val}, inc: {inc_val}, current: {current}")
                          # Connect signal
@@ -83,6 +89,21 @@ class ROIControl(NumericCameraControl):
             # Update camera
             self.camera_control.call_camera_command(command, "set", value)
             
+            logger.debug(f"{command} set to {value}")
+            
+            if command in ['width', 'height']:
+                # Get current dimension and max dimension
+                max_value  = self.camera_control.call_camera_command(f"{command}_max", "get")
+                
+                # Calculate and set new max offset
+                max_offset = max_value - value
+                
+                # Update the appropriate offset spinbox
+                if command == 'width':
+                    self.window.roi_offset_x.setMaximum(max_offset)
+                else:  # height
+                    self.window.roi_offset_y.setMaximum(max_offset)
+                    
             # Update status bar
             if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
                 self.window.ui_methods.status_bar_manager.update_on_control_change(command)
