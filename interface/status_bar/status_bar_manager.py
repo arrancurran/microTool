@@ -34,7 +34,7 @@ class StatusBarManager(QObject):
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_all)
         # TODO: We need to change this to only update when a control changes
-        self.update_timer.start(200)  # Update every 200ms
+        self.update_timer.start(50)  # Update every 50ms
         
     def initialize_items(self):
         """Initialize all registered status bar items."""
