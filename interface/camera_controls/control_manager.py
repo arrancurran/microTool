@@ -1,7 +1,7 @@
 """
 Manager for all camera controls.
 """
-from typing import Dict, Type
+from typing import Dict
 
 from .base_control import CameraControl
 from .exposure_control import ExposureControl
