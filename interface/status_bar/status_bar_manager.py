@@ -3,6 +3,7 @@ Manager for updating the status bar with camera information.
 """
 from PyQt6.QtCore import QObject, QTimer
 from typing import Dict, Type
+import logging
 
 from .status_bar_item import StatusBarItem
 from .items import (
@@ -12,6 +13,8 @@ from .items import (
     ImageSizeItem,
     StreamingBandwidthItem
 )
+
+logger = logging.getLogger(__name__)
 
 class StatusBarManager(QObject):
     """Manages updates to the status bar with camera information."""
@@ -38,36 +41,36 @@ class StatusBarManager(QObject):
         
     def initialize_items(self):
         """Initialize all registered status bar items."""
-        print("Initializing status bar items...")  # Debug print
+        logger.debug("Initializing status bar items...")  # Debug print
         for item_name, item_class in self.STATUS_ITEMS.items():
-            print(f"Setting up {item_name} item...")  # Debug print
+            logger.debug(f"Setting up {item_name} item...")  # Debug print
             try:
                 # Get the label from the window
                 label = getattr(self.window, f"{item_name}_label", None)
                 if label is None:
-                    print(f"Warning: Label for {item_name} not found")
+                    logger.warning(f"Warning: Label for {item_name} not found")
                     continue
                     
                 # Create and initialize the item
                 item = item_class(label)
                 self.items[item_name] = item
-                print(f"Successfully initialized {item_name} item")
+                logger.debug(f"Successfully initialized {item_name} item")
                 
             except Exception as e:
-                print(f"Error initializing {item_name} item: {str(e)}")
+                logger.error(f"Error initializing {item_name} item: {str(e)}")
                 
-        print(f"Finished initializing items. Active items: {list(self.items.keys())}")  # Debug print
+        logger.debug(f"Finished initializing items. Active items: {list(self.items.keys())}")  # Debug print
         
     def update_all(self):
         """Update all status bar items."""
-        print("StatusBarManager: Starting update_all")  # Debug print
+        # logger.debug("StatusBarManager: Starting update_all")  # Debug print
         for item_name, item in self.items.items():
-            print(f"StatusBarManager: Updating {item_name}")  # Debug print
+            # logger.debug(f"StatusBarManager: Updating {item_name}")  # Debug print
             item.update(self.camera_control)
             
     def update_on_control_change(self, control_name: str):
         """Update status bar items based on which control changed."""
-        print(f"StatusBarManager: Update triggered for control: {control_name}")  # Debug print
+        logger.debug(f"StatusBarManager: Update triggered by {control_name}")  # Debug print
         
         # Define which items should update for each control
         control_updates = {
@@ -80,10 +83,10 @@ class StatusBarManager(QObject):
         if control_name in control_updates:
             for item_name in control_updates[control_name]:
                 if item_name in self.items:
-                    print(f"StatusBarManager: Updating {item_name} for {control_name} change")  # Debug print
+                    logger.debug(f"StatusBarManager: Updating {item_name} for {control_name} change")  # Debug print
                     self.items[item_name].update(self.camera_control)
         else:
-            print(f"StatusBarManager: Unknown control name: {control_name}")  # Debug print
+            logger.debug(f"StatusBarManager: Unknown control name: {control_name}")  # Debug print
             
     def cleanup(self):
         """Cleanup the status bar manager."""

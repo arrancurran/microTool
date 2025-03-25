@@ -30,7 +30,7 @@ def setup_logging():
             logging.StreamHandler()  # Also log to console
         ]
     )
-    
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
     # Log startup message
     logging.info("Starting microTool application")
 

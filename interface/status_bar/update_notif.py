@@ -5,6 +5,9 @@ Provides a centralized way to update the main window's status bar from anywhere 
 
 from PyQt6.QtCore import Qt, QMetaObject, Q_ARG
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Global reference to the main window
 _main_window = None
@@ -43,7 +46,7 @@ def update_notif(message: str, duration: Optional[int] = None):
         update_notif(f"Processing frame {current}/{total}")
     """
     if _main_window is None:
-        print(f"Warning: Main window not set. Status message: {message}")
+        logger.warning(f"Warning: Main window not set. Status message: {message}")
         return
         
     if hasattr(_main_window, 'statusBar'):
@@ -55,4 +58,4 @@ def update_notif(message: str, duration: Optional[int] = None):
             Q_ARG(int, duration) if duration is not None else Q_ARG(int, 0)
         )
     else:
-        print(f"Warning: Main window has no status bar. Status message: {message}") 
+        logger.warning(f"Warning: Main window has no status bar. Status message: {message}") 

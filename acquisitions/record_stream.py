@@ -6,6 +6,9 @@ from .logging_queue import LoggingQueue
 from interface.status_bar.update_notif import update_notif
 from utils import get_computer_name
 import qtawesome as qta
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RecordStream:
     """Handles continuous recording of camera frames to a queue."""
@@ -73,7 +76,7 @@ class RecordStream:
             return True
             
         except Exception as e:
-            print(f"Error Starting Recording: {e}")
+            logger.error(f"Error Starting Recording: {e}")
             update_notif(f"Error Starting Recording: {e}")
             self.is_recording = False
             self.logger.stop_recording()
@@ -110,7 +113,7 @@ class RecordStream:
                 if frame is not None:
                     if not self.queue.put_frame(frame, timestamp):
                         # If queue is full, stop recording
-                        print("Queue Full - Stopping Stream")
+                        logger.debug("Queue Full - Stopping Stream")
                         update_notif("Queue Full - Stopping Stream", duration=2000)
                         self.is_recording = False
                         self.camera_control.stop_camera()
@@ -129,5 +132,5 @@ class RecordStream:
                         break
                         
             except Exception as e:
-                print(f"Error recording frame: {e}")
+                logger.error(f"Error recording frame: {e}")
                 time.sleep(0.1) 

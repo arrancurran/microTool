@@ -31,6 +31,9 @@ import json
 from ximea import xiapi
 from queue import Queue
 from threading import Lock, Thread
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CameraControl:
     """
@@ -111,7 +114,7 @@ class CameraControl:
                         if result_queue:
                             result_queue.put(result)
                     except Exception as e:
-                        print(f"Error executing camera command: {str(e)}")
+                        logger.error(f"Error executing camera command: {str(e)}")
                         if result_queue:
                             result_queue.put(None)
                 
@@ -124,13 +127,13 @@ class CameraControl:
        
         """Execute a single camera command."""
         if not self.camera:
-            print("CameraControl._execute_camera_command(): Camera not initialized.")
+            logger.error("CameraControl._execute_camera_command(): Camera not initialized.")
             return None
 
         """Look up command by friendly name in the appropriate dictionary"""
         cmd_dict = self.set_commands_by_name if method == "set" else self.get_commands_by_name
         if friendly_name not in cmd_dict:
-            print(f"CameraControl._execute_camera_command(): Command with friendly name '{friendly_name}' not found in {method} commands.")
+            logger.error(f"CameraControl._execute_camera_command(): Command with friendly name '{friendly_name}' not found in {method} commands.")
             return None
 
         """Get the Ximea API command name for the API call"""
@@ -139,7 +142,7 @@ class CameraControl:
         method_name = f"{method}_{api_cmd_name}"
         
         if not hasattr(self.camera, method_name):
-            print(f"CameraControl._execute_camera_command(): Method {method_name} not found in xiapi.Camera")
+            logger.error(f"CameraControl._execute_camera_command(): Method {method_name} not found in xiapi.Camera")
             return None
 
         try:
@@ -153,17 +156,17 @@ class CameraControl:
                     elif value_type == 'int':
                         value = int(value)
                 except (ValueError, TypeError) as e:
-                    print(f"CameraControl._execute_camera_command(): Error converting value to {value_type}: {str(e)}")
+                    logger.error(f"CameraControl._execute_camera_command(): Error converting value to {value_type}: {str(e)}")
                     return None
                     
-                print(f"CameraControl._execute_camera_command(): Setting {friendly_name} to {value} ({type(value)})")  # Debug print
+                logger.debug(f"CameraControl._execute_camera_command(): Setting {friendly_name} to {value} ({type(value)})")  # Debug print
                 camera_method(value)
                 return value
             else:  # method == "get"
                 result = camera_method()
                 return result
         except Exception as e:
-            print(f"CameraControl._execute_camera_command(): Error executing camera command {method_name}: {str(e)}")
+            logger.error(f"CameraControl._execute_camera_command(): Error executing camera command {method_name}: {str(e)}")
             return None
     
     def call_camera_command(self, friendly_name, method, value=None):
@@ -177,7 +180,7 @@ class CameraControl:
                 result = result_queue.get(timeout=2.0)  # 2 second timeout for get operations
                 return result
             except:
-                print("CameraControl.call_camera_command(): Timeout waiting for camera command result")
+                logger.error("CameraControl.call_camera_command(): Timeout waiting for camera command result")
                 return None
         return None
         
@@ -187,13 +190,13 @@ class CameraControl:
         if self.camera is None:
             with self.camera_lock:
                 self.camera = xiapi.Camera()
-                print("CameraControl.initialize_camera(): Camera object created.")
+                logger.debug("CameraControl.initialize_camera(): Camera object created.")
                 self._load_commands()  # Load commands first
-                print("CameraControl.initialize_camera(): Commands loaded.")
+                logger.debug("CameraControl.initialize_camera(): Commands loaded.")
                 self.start_command_thread()
-                print("CameraControl.initialize_camera(): Command thread started.")
+                logger.debug("CameraControl.initialize_camera(): Command thread started.")
         else:
-            print("CameraControl.initialize_camera(): Camera already initialized.")
+            logger.debug("CameraControl.initialize_camera(): Camera already initialized.")
 
     def open_camera(self):
         
@@ -201,18 +204,18 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.open_device()
-                print("CameraControl.open_camera(): Camera connection established.")
+                logger.debug("CameraControl.open_camera(): Camera connection established.")
         else:
-            print("CameraControl.open_camera(): Camera connection not established.")
+            logger.error("CameraControl.open_camera(): Camera connection not established.")
 
     def ImageObject(self):
         
         """Create an image object."""
         if self.image is None:
             self.image = xiapi.Image()
-            print("CameraControl.ImageObject(): Image object created.")
+            logger.debug("CameraControl.ImageObject(): Image object created.")
         else:
-            print("CameraControl.ImageObject(): Image object already created.")
+            logger.debug("CameraControl.ImageObject(): Image object already created.")
 
     def start_camera(self):
         
@@ -220,9 +223,9 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.start_acquisition()
-                print("CameraControl.start_camera(): Camera acquisition started.")
+                logger.debug("CameraControl.start_camera(): Camera acquisition started.")
         else:
-            print("CameraControl.start_camera(): Camera failed to start acquisition.")
+            logger.error("CameraControl.start_camera(): Camera failed to start acquisition.")
     
     def get_image(self):
         
@@ -231,7 +234,7 @@ class CameraControl:
             with self.camera_lock:
                 return self.camera.get_image(self.image)
         else:
-            print("CameraControl.get_image(): Image object doesn't exist.")
+            logger.error("CameraControl.get_image(): Image object doesn't exist.")
 
     def get_image_data(self):
         
@@ -239,7 +242,7 @@ class CameraControl:
         if self.image:
             return self.image.get_image_data_numpy()
         else:
-            print("CameraControl.get_image_data(): Failed to get image numpy data.")
+            logger.error("CameraControl.get_image_data(): Failed to get image numpy data.")
     
     def get_image_timestamp(self):
         
@@ -250,7 +253,7 @@ class CameraControl:
             timestamp = tsSec + tsUSec / 1e6
             return timestamp
         else:
-            print("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
+            logger.error("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
     
     def stop_camera(self):
         
@@ -258,9 +261,9 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.stop_acquisition()
-                print("CameraControl.stop_camera(): Camera acquisition stopped.")
+                logger.debug("CameraControl.stop_camera(): Camera acquisition stopped.")
         else:
-            print("CameraControl.stop_camera(): Camera failed to stop acquisition.")
+            logger.error("CameraControl.stop_camera(): Camera failed to stop acquisition.")
 
     def close(self):
         
@@ -269,10 +272,10 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.close_device()
-                print("CameraControl.close(): Camera closed.")
+                logger.debug("CameraControl.close(): Camera closed.")
                 self.camera = None
         else:
-            print("CameraControl.close(): Camera failed to close.")
+            logger.error("CameraControl.close(): Camera failed to close.")
 
 class CameraSequences():
     """

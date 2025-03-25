@@ -18,6 +18,9 @@ from .draw_roi import DrawROI
 from utils import calc_img_hist
 from interface.status_bar.update_notif import update_notif
 import qtawesome as qta
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UIMethods(QObject):
     """
@@ -192,7 +195,7 @@ class UIMethods(QObject):
             y = rect.y()
             width = rect.width()
             height = rect.height()
-            
+
             """Get current ROI offset"""
             current_offset_x = self.window.roi_offset_x.value()
             current_offset_y = self.window.roi_offset_y.value()
@@ -200,6 +203,14 @@ class UIMethods(QObject):
             """Add current offset to the new rectangle position"""
             new_offset_x = current_offset_x + x
             new_offset_y = current_offset_y + y
+            
+            """Sanity check the ROI values"""
+            width = self._sanity_check_roi("width", width)
+            height = self._sanity_check_roi("height", height)
+            new_offset_x = self._sanity_check_roi("offset_x", new_offset_x)
+            new_offset_y = self._sanity_check_roi("offset_y", new_offset_y)
+            
+            logger.debug(f"Sanity checked ROI: width = {width}, height = {height}, offset_x = {new_offset_x}, offset_y = {new_offset_y}")
             
             """Update the ROI spinboxes"""
             self.window.roi_width.setValue(width)
@@ -214,6 +225,22 @@ class UIMethods(QObject):
             self.draw_roi.current_rect = None
         else:
             update_notif("No ROI Selected", duration=2000)
+    
+    def _sanity_check_roi(self, command, value):
+        """Sanity check the ROI values."""
+        inc = int(self.camera_control.call_camera_command(f"{command}_inc", "get"))
+        min_val = int(self.camera_control.call_camera_command(f"{command}_min", "get"))
+
+        safe_value = None
+        
+        if value % inc == 0:
+            safe_value = value
+        elif value < min_val:
+            safe_value = min_val
+        else:
+            safe_value = value - (value % inc)
+                
+        return safe_value
     
     def handle_reset_roi(self):
         
@@ -236,7 +263,7 @@ class UIMethods(QObject):
             self.status_bar_manager.update_on_control_change("roi")
             
         except Exception as e:
-            print(f"Error resetting ROI: {str(e)}")
+            logger.error(f"Error resetting ROI: {str(e)}")
             update_notif("Failed to Reset ROI", duration=2000)
     
     def cleanup(self):

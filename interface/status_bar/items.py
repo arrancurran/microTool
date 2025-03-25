@@ -3,6 +3,10 @@ Specific status bar items for camera information.
 """
 from typing import Any
 from .status_bar_item import StatusBarItem
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)  # This will suppress DEBUG, INFO, and WARNING messages
 
 class CameraModelItem(StatusBarItem):
     """Status bar item for camera model name."""
@@ -45,7 +49,7 @@ class ImageSizeItem(StatusBarItem):
         if value:
             width, height = value
             size_bytes = width * height
-            print(f"ImageSizeItem: Calculating size for {width}x{height} = {size_bytes} bytes")  # Debug print
+            logger.debug(f"ImageSizeItem: Calculating size for {width}x{height} = {size_bytes} bytes")  # Debug print
 
             if size_bytes >= 1024**3:  # GB
                 return f"{size_bytes / (1024**3):.2f} GB"
@@ -61,10 +65,10 @@ class ImageSizeItem(StatusBarItem):
         try:
             width = int(camera_control.call_camera_command("width", "get"))
             height = int(camera_control.call_camera_command("height", "get"))
-            print(f"ImageSizeItem: Got dimensions from camera: {width}x{height}")  # Debug print
+            logger.debug(f"ImageSizeItem: Got dimensions from camera: {width}x{height}")  # Debug print
             return (width, height)
         except Exception as e:
-            print(f"ImageSizeItem: Error getting dimensions from camera: {str(e)}")  # Debug print
+            logger.error(f"ImageSizeItem: Error getting dimensions from camera: {str(e)}")  # Debug print
             return None
 
 class StreamingBandwidthItem(StatusBarItem):

@@ -1,6 +1,9 @@
 from datetime import datetime
 import tifffile
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Snapshot:
     """Handles saving individual frames from the camera as TIFF files."""
@@ -28,7 +31,7 @@ class Snapshot:
             self.camera_control.stop_camera()
             
             if frame is None:
-                print("Failed to capture frame")
+                logger.error("Failed to capture frame")
                 return False
                 
             # Generate filename with timestamp
@@ -37,12 +40,12 @@ class Snapshot:
             
             # Save the image as TIFF
             tifffile.imwrite(filename, frame)
-            print(f"Snapshot saved as {filename}")
+            logger.info(f"Snapshot saved as {filename}")
             
             return True
             
         except Exception as e:
-            print(f"Error saving snapshot: {str(e)}")
+            logger.error(f"Error saving snapshot: {str(e)}")
             return False
             
         finally:

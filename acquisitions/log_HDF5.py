@@ -1,9 +1,16 @@
+"""
+HDF5 logging for camera acquisitions.
+"""
 import h5py
 import numpy as np
 from datetime import datetime
 import time
 import threading
+import logging
 from interface.status_bar.update_notif import update_notif
+from queue import Queue
+
+logger = logging.getLogger(__name__)
 
 class HDF5Logger:
     """Handles saving image data to HDF5 files."""
@@ -19,7 +26,7 @@ class HDF5Logger:
     def start_recording(self, metadata=None):
         """Start a new recording session."""
         if self.file:
-            print("Recording already in progress")
+            logger.info("Recording already in progress")
             return False
             
         try:
@@ -34,7 +41,7 @@ class HDF5Logger:
             return True
             
         except Exception as e:
-            print(f"Error starting recording: {e}")
+            logger.error(f"Error starting recording: {e}")
             self._cleanup()
             return False
     
@@ -75,7 +82,7 @@ class HDF5Logger:
                     last_update = current_time
                     
             except Exception as e:
-                print(f"Error saving frame: {e}")
+                logger.error(f"Error saving frame: {e}")
                 time.sleep(0.1)
                 
     def _save_frame(self, frame, timestamp):
@@ -117,7 +124,7 @@ class HDF5Logger:
             return True
             
         except Exception as e:
-            print(f"Error saving frame: {e}")
+            logger.error(f"Error saving frame: {e}")
             return False
             
     def _update_save_status(self, queue, current_time, start_time):
@@ -138,7 +145,7 @@ class HDF5Logger:
                 time.sleep(0.2)
             
             # Print initial statistics
-            print(f"\nRecording Statistics:\n"
+            logger.info(f"\nRecording Statistics:\n"
                   f"Total frames recorded: {queue.frames_recorded}\n"
                   f"Total frames saved: {queue.frames_saved}\n"
                   f"Frames dropped: {queue.frames_dropped}\n"
@@ -166,7 +173,7 @@ class HDF5Logger:
                         timestamps_to_save = []
                         
                 except Exception as e:
-                    print(f"Error during batch saving: {e}")
+                    logger.error(f"Error during batch saving: {e}")
                     # Don't break here, try to continue saving
                     time.sleep(0.1)
                     continue
@@ -179,7 +186,7 @@ class HDF5Logger:
             # Verify all frames were handled
             frames_handled = queue.frames_saved + queue.frames_dropped
             if frames_handled < queue.frames_recorded:
-                print(f"Warning: {queue.frames_recorded - frames_handled} frames were lost during cleanup")
+                logger.warning(f"Warning: {queue.frames_recorded - frames_handled} frames were lost during cleanup")
             
             # Show completion message
             update_notif("Acquisition finished and saved to disk.", duration=2000)
@@ -233,7 +240,7 @@ class HDF5Logger:
             return True
             
         except Exception as e:
-            print(f"Error saving batch: {e}")
+            logger.error(f"Error saving batch: {e}")
             return False
             
     def _cleanup(self):
@@ -243,7 +250,7 @@ class HDF5Logger:
                 self.file.flush()
                 self.file.close()
             except Exception as e:
-                print(f"Error closing HDF5 file: {e}")
+                logger.error(f"Error closing HDF5 file: {e}")
             finally:
                 self.file = None
                 self.dataset = None

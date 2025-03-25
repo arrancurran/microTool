@@ -7,6 +7,9 @@ Emits signals when new frames are ready for display.
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 import queue
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CameraThread(QThread):
     """
@@ -49,7 +52,7 @@ class CameraThread(QThread):
                     self.frame_captured.emit(image_data)
                 
             except Exception as e:
-                print(f"Error in camera thread: {str(e)}")
+                logger.error(f"Error in camera thread: {str(e)}")
                 time.sleep(0.1)  # Sleep briefly on error to prevent hammering the CPU on error
     
     def stop(self):
@@ -93,7 +96,7 @@ class StreamCamera(QObject):
             self.camera_thread.frame_captured.connect(self._handle_frame)
             self.camera_control.start_camera()
             self.camera_thread.start()
-            print("StreamCamera.start_stream(): Camera stream started.")
+            logger.debug("StreamCamera.start_stream(): Camera stream started.")
 
     def _handle_frame(self, image_data):
         """Handle a new frame from the camera thread with throttling"""
@@ -109,7 +112,7 @@ class StreamCamera(QObject):
                     self.streaming_queue.put(image_data)
                     self.frame_available.emit()
             except Exception as e:
-                print(f"Error handling frame: {str(e)}")
+                logger.error(f"Error handling frame: {str(e)}")
 
     def stop_stream(self):
         
@@ -119,7 +122,7 @@ class StreamCamera(QObject):
                 if self.camera_thread.isRunning():
                     self.camera_thread.stop()
                 self.camera_thread = None
-            print("StreamCamera.stop_stream(): Camera stream stopped.")
+            logger.debug("StreamCamera.stop_stream(): Camera stream stopped.")
             self.camera_control.stop_camera()
         except RuntimeError:
             # Ignore errors if the thread has already been deleted

@@ -2,6 +2,9 @@ import threading
 from queue import Queue, Empty, Full
 import psutil
 from interface.status_bar.update_notif import update_notif
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoggingQueue:
     """Handles the queue setup and management for frame logging."""
@@ -35,12 +38,12 @@ class LoggingQueue:
         queue_size_elements = queue_size_bytes / bytes_per_frame
         queue_size_GB = int(queue_size_bytes / 1024**3)
         
-        print(f"Queue size set to {queue_size_elements:.1f} elements ({(queue_size_GB)} GB)")
+        logger.debug(f"Queue size set to {queue_size_elements:.1f} elements ({(queue_size_GB)} GB)")
         return int(queue_size_elements)
         
     def _update_notif(self, message):
         """Update status bar and print message."""
-        print(message)
+        logger.debug(message)
         update_notif(message)
         
     def _format_size(self, bytes_size):
