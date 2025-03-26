@@ -7,9 +7,10 @@ Provides ROI drawing capabilities and histogram visualization.
 from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
+import pyqtgraph as pg  
 import qtawesome as qta
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json, os
 
 class ImageLabel(QLabel):
@@ -171,9 +172,17 @@ class ui(QMainWindow):
         right_layout = QVBoxLayout(right_column)
         
         """Histogram"""
-        self.hist_figure = plt.figure()
-        self.hist_display = FigureCanvas(self.hist_figure)
+        # self.hist_figure = plt.figure()
+        # self.hist_display = FigureCanvas(self.hist_figure)
+        # self.hist_display.setFixedSize(512, 120)
+        self.hist_display = pg.PlotWidget()
         self.hist_display.setFixedSize(512, 120)
+        self.hist_display.setBackground('w')  # Optional: Set background color to white
+        self.hist_display.hideAxis('left')   # Hide the Y-axis
+        self.hist_display.hideAxis('bottom') # Hide the X-axis
+        
+        """Add Histogram Display to Right Column"""
+        right_layout.addWidget(self.hist_display)  # Ensure histogram is added to the layout
         
         """Exposure Slider"""
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
