@@ -7,6 +7,8 @@ Provides ROI drawing capabilities and histogram visualization.
 from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
+from utils.img_hist_disp import ImgHistDisplay  # Import the ImgHistDisplay class
+
 import pyqtgraph as pg  
 import qtawesome as qta
 # import matplotlib.pyplot as plt
@@ -89,7 +91,12 @@ class ui(QMainWindow):
             setattr(self, f"{label_name}_label", label)
             self.status_bar.addWidget(label)
             label.setText(label_text)
-            
+       
+        """Initialize the histogram plot""" 
+        self.hist_display = pg.PlotWidget()
+        self.hist_display.setFixedSize(512, 120)
+        self.histogram_plot = ImgHistDisplay(self.hist_display)  # Initialize ImgHistDisplay
+       
         """Build the rest of the UI"""
         self.build_ui()
         # self.apply_styles()  # Apply styling after UI is built
@@ -175,12 +182,6 @@ class ui(QMainWindow):
         # self.hist_figure = plt.figure()
         # self.hist_display = FigureCanvas(self.hist_figure)
         # self.hist_display.setFixedSize(512, 120)
-        self.hist_display = pg.PlotWidget()
-        self.hist_display.setFixedSize(512, 120)
-        self.hist_display.setBackground('w')  # Optional: Set background color to white
-        self.hist_display.hideAxis('left')   # Hide the Y-axis
-        self.hist_display.hideAxis('bottom') # Hide the X-axis
-        
         """Add Histogram Display to Right Column"""
         right_layout.addWidget(self.hist_display)  # Ensure histogram is added to the layout
         

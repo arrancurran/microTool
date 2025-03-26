@@ -15,7 +15,6 @@ from acquisitions.snapshot import Snapshot
 from .draw_roi import DrawROI
 
 """ Import Functions """
-from utils import calc_img_hist
 from interface.status_bar.update_notif import update_notif
 import qtawesome as qta
 import logging
@@ -180,7 +179,7 @@ class UIMethods(QObject):
 
         """Update the image histogram"""
         # TODO: Should this be done here? Maybe a separate thread or multiprocessing?
-        calc_img_hist(self.window, np_image_data)
+        self.window.histogram_plot.update(np_image_data)
     
     def handle_apply_roi(self):
         
