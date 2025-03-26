@@ -31,9 +31,9 @@ import json
 from ximea import xiapi
 from queue import Queue
 from threading import Lock, Thread
-import logging
 
-logger = logging.getLogger(__name__)
+
+from . import logger
 
 class CameraControl:
     """
@@ -64,7 +64,9 @@ class CameraControl:
         self.get_commands = {}
         self.set_commands_by_name = {}
         self.get_commands_by_name = {}
+        # Setup queue for camera commands
         self.command_queue = Queue()
+        # Setup lock for camera access, ensures only one command is sent to the camera at a time
         self.camera_lock = Lock()
         self.command_thread = None
         self.running = True
