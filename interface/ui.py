@@ -3,68 +3,66 @@ Main UI module that defines the application window and custom widgets.
 Handles layout, controls, and image display components using PyQt6.
 Provides ROI drawing capabilities and histogram visualization.
 """
-
+import json, os
+import pyqtgraph as pg  
+import qtawesome as qta
 from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
 from PyQt6.QtGui import QAction, QPainter
 from PyQt6.QtCore import Qt
-from utils.img_hist_disp import ImgHistDisplay  # Import the ImgHistDisplay class
 
-import pyqtgraph as pg  
-import qtawesome as qta
-# import matplotlib.pyplot as plt
-# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import json, os
+from .img_disp import ImgDisp  # Import the ImgDisp class
+from utils.img_hist_disp import ImgHistDisplay
 
-class ImageLabel(QLabel):
-    """
-    Custom QLabel subclass for handling ROI drawing interactions.
-    Manages mouse events and painting for region of interest selection.
+# class ImgDisp(QLabel):
+#     """
+#     Custom QLabel subclass for handling ROI drawing interactions.
+#     Manages mouse events and painting for region of interest selection.
     
-    Called by:
-    - interface/ui.py: Main UI creates ImageLabel for camera display
-    - interface/ui_methods.py: UIMethods handles the mouse/paint events
+#     Called by:
+#     - interface/ui.py: Main UI creates ImgDisp for camera display
+#     - interface/ui_methods.py: UIMethods handles the mouse/paint events
     
-    Example usage:
-        image_container = ImageLabel()
-        image_container.ui_methods = ui_methods  # Connect UI methods
-        image_container.setPixmap(camera_frame)  # Display camera frame
-        # ROI drawing handled automatically via mouse events
-    """
+#     Example usage:
+#         image_container = ImgDisp()
+#         image_container.ui_methods = ui_methods  # Connect UI methods
+#         image_container.setPixmap(camera_frame)  # Display camera frame
+#         # ROI drawing handled automatically via mouse events
+#     """
 
-    #    TODO: Should we move this to ui_methods?
-    def __init__(self, parent=None):
+#     #    TODO: Should we move this to ui_methods?
+#     def __init__(self, parent=None):
         
-        """Initialize the ImageLabel"""
-        super().__init__(parent)
-        self.setMouseTracking(True)
-        self.ui_methods = None
+#         """Initialize the ImgDisp"""
+#         super().__init__(parent)
+#         self.setMouseTracking(True)
+#         self.ui_methods = None
 
-    def mousePressEvent(self, event):
+#     def mousePressEvent(self, event):
         
-        """Handle mouse press events"""
-        if self.ui_methods:
-            self.ui_methods.handle_mouse_press(event)
+#         """Handle mouse press events"""
+#         if self.ui_methods:
+#             self.ui_methods.handle_mouse_press(event)
 
-    def mouseMoveEvent(self, event):
+#     def mouseMoveEvent(self, event):
         
-        """Handle mouse move events"""
-        if self.ui_methods:
-            self.ui_methods.handle_mouse_move(event)
+#         """Handle mouse move events"""
+#         if self.ui_methods:
+#             self.ui_methods.handle_mouse_move(event)
 
-    def mouseReleaseEvent(self, event):
+#     def mouseReleaseEvent(self, event):
         
-        """Handle mouse release events"""
-        if self.ui_methods:
-            self.ui_methods.handle_mouse_release(event)
+#         """Handle mouse release events"""
+#         if self.ui_methods:
+#             self.ui_methods.handle_mouse_release(event)
 
-    def paintEvent(self, event):
+#     def paintEvent(self, event):
         
-        """Handle paint events"""
-        super().paintEvent(event)
-        if self.ui_methods:
-            painter = QPainter(self)
-            self.ui_methods.handle_paint(painter)
-            painter.end()
+#         """Handle paint events"""
+#         super().paintEvent(event)
+#         if self.ui_methods:
+#             painter = QPainter(self)
+#             self.ui_methods.handle_paint(painter)
+#             painter.end()
 
 class ui(QMainWindow):
     """
@@ -125,7 +123,7 @@ class ui(QMainWindow):
         controls_layout = QHBoxLayout(controls_container)
 
         """Camera Image Container"""
-        self.image_container = ImageLabel(self)
+        self.image_container = ImgDisp(self)
         image_scaffolding = self.ui_scaffolding['image_display']
         self.image_container.setMinimumSize(image_scaffolding['min_width'], image_scaffolding['min_height'])
         self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -177,13 +175,6 @@ class ui(QMainWindow):
         """Right Column"""
         right_column = QWidget()
         right_layout = QVBoxLayout(right_column)
-        
-        """Histogram"""
-        # self.hist_figure = plt.figure()
-        # self.hist_display = FigureCanvas(self.hist_figure)
-        # self.hist_display.setFixedSize(512, 120)
-        """Add Histogram Display to Right Column"""
-        right_layout.addWidget(self.hist_display)  # Ensure histogram is added to the layout
         
         """Exposure Slider"""
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)

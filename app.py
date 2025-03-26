@@ -1,9 +1,8 @@
-import sys
-import logging
-import os
+import sys, os, logging
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
+
 from interface.ui import ui
 from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
@@ -30,7 +29,6 @@ def setup_logging():
             logging.StreamHandler()  # Also log to console
         ]
     )
-    # logging.getLogger("matplotlib").setLevel(logging.WARNING)
     # Log startup message
     logging.info("Starting microTool application")
 
@@ -60,10 +58,6 @@ class microTool():
         self.ui_update_timer.timeout.connect(self.ui_methods.update_ui_image)
         self.ui_update_timer.start(33)  # ~30 FPS for UI updates
         
-        # Disconnect direct connection
-        # """Connect the stream to update the image display"""
-        # self.stream_camera.frame_available.connect(self.ui_methods.update_ui_image)
-
         """Connect the window close event to our cleanup method"""
         self.window.closeEvent = self.cleanup
 
@@ -85,10 +79,6 @@ class microTool():
         except Exception as e:
             logging.error(f"Error during cleanup: {e}")
             event.accept()
-    
-    def run(self):
-        self.window.show()
-        sys.exit(self.app.exec())
         
     def __del__(self):
         """Backup cleanup method, but closeEvent handler is the primary cleanup method"""
@@ -100,11 +90,14 @@ class microTool():
             logging.info("microTool.__del__(): Resources cleaned up.")
         except Exception as e:
             logging.error(f"Error during __del__ cleanup: {e}")
-
+    
+    def run(self):
+        self.window.show()
+        sys.exit(self.app.exec())
+        
 if __name__ == "__main__":
     # Set up logging before creating the application
     setup_logging()
-    
     # Create and run the application
     app = microTool()
     app.run()
