@@ -19,18 +19,18 @@ def setup_logging():
     
     # Create a timestamp for the log file name
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = f'logs/microtool_{timestamp}.log'
+    log_file = f'logs/microTool_{timestamp}.log'
     
     # Configure logging
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format='%(levelname)s - %(filename)s - %(funcName)s - %(threadName)s -%(message)s',
         handlers=[
             logging.FileHandler(log_file),
             logging.StreamHandler()  # Also log to console
         ]
     )
-    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    # logging.getLogger("matplotlib").setLevel(logging.WARNING)
     # Log startup message
     logging.info("Starting microTool application")
 
