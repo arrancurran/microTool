@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class LoggingQueue:
+class ImgDataQueueHandler:
     """Handles the queue setup and management for frame logging."""
     
     def __init__(self, window, roi_width, roi_height):
@@ -18,7 +18,7 @@ class LoggingQueue:
         
         # Initialize queue
         self.queue_size = self._calculate_queue_size()
-        self.frame_queue = Queue(maxsize=self.queue_size)
+        self.img_data_queue = Queue(maxsize=self.queue_size)
         self.frame_bytes = None
         
         # Performance tracking
@@ -56,9 +56,9 @@ class LoggingQueue:
         
     def get_queue_size(self):
         """Get current queue size in human readable format."""
-        if not self.frame_bytes or self.frame_queue.empty():
+        if not self.frame_bytes or self.img_data_queue.empty():
             return "0 B"
-        return self._format_size(self.frame_bytes * self.frame_queue.qsize())
+        return self._format_size(self.frame_bytes * self.img_data_queue.qsize())
         
     def put_frame(self, frame, timestamp):
         """Put a frame in the queue with backpressure handling."""
@@ -66,7 +66,7 @@ class LoggingQueue:
             self.frame_bytes = frame.nbytes
             
         try:
-            self.frame_queue.put((frame, timestamp), timeout=0.1)
+            self.img_data_queue.put((frame, timestamp), timeout=0.1)
             self.frames_recorded += 1
             return True
         except Full:
@@ -75,15 +75,15 @@ class LoggingQueue:
     def get_frame(self, timeout=0.1):
         """Get a frame from the queue."""
         try:
-            frame, timestamp = self.frame_queue.get(timeout=timeout)
-            self.frame_queue.task_done()
+            frame, timestamp = self.img_data_queue.get(timeout=timeout)
+            self.img_data_queue.task_done()
             return frame, timestamp
         except Empty:
             return None, None
             
     def is_empty(self):
         """Check if queue is empty."""
-        return self.frame_queue.empty()
+        return self.img_data_queue.empty()
         
     def get_queue_stats(self):
         """Get current queue statistics."""
@@ -91,7 +91,7 @@ class LoggingQueue:
             'frames_recorded': self.frames_recorded,
             'frames_saved': self.frames_saved,
             'frames_dropped': self.frames_dropped,
-            'queue_size': self.frame_queue.qsize(),
+            'queue_size': self.img_data_queue.qsize(),
             'queue_capacity': self.queue_size
         }
         

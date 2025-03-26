@@ -10,7 +10,7 @@ import time
 """ Import Classes """
 from .camera_controls.control_manager import CameraControlManager
 from .status_bar.status_bar_manager import StatusBarManager
-from acquisitions.record_stream import RecordStream
+from acquisitions.acquire_stream import AcquireStream
 from acquisitions.snapshot import Snapshot
 from .draw_roi import DrawROI
 
@@ -31,7 +31,7 @@ class UIMethods(QObject):
     
     Example usage:
         window = ui()
-        stream_camera = StreamCamera(camera_control)
+        stream_camera = LiveStreamHandler(camera_control)
         ui_methods = UIMethods(window, stream_camera)
         ui_methods.update_ui_image()  # Updates display with latest frame
     """
@@ -43,7 +43,7 @@ class UIMethods(QObject):
         self.stream_camera = stream_camera
         self.camera_control = self.stream_camera.camera_control
         self.snapshot = Snapshot(stream_camera, window)
-        self.record_stream = RecordStream(stream_camera, window)
+        self.record_stream = AcquireStream(stream_camera, window)
         self.draw_roi = DrawROI()
         
         """Initialize camera controls"""
@@ -121,7 +121,7 @@ class UIMethods(QObject):
     def update_ui_image(self):
         
         """Get the latest frame from the stream and update the UI image display."""
-        np_image_data = self.stream_camera.get_latest_frame()
+        np_image_data = self.stream_camera.get_img_from_queue()
         if np_image_data is None:
             return
         

@@ -1,68 +1,55 @@
 """
 HDF5 logging for camera acquisitions.
 """
-import h5py
+import h5py, time, threading, logging
 import numpy as np
 from datetime import datetime
-import time
-import threading
-import logging
 from interface.status_bar.update_notif import update_notif
-from queue import Queue
 
 logger = logging.getLogger(__name__)
 
-class HDF5Logger:
-    """Handles saving image data to HDF5 files."""
+class HDF5Handler:
     
     def __init__(self):
-        self.file = None
+        self.create_hdf5 = None
         self.dataset = None
         self.timestamps = None
         self.frame_count = 0
         self.is_saving = False
         self.saving_thread = None
         
-    def start_recording(self, metadata=None):
-        """Start a new recording session."""
-        if self.file:
-            logger.info("Recording already in progress")
-            return False
-            
+    def init_h5File(self, metadata=None):
+        if self.create_hdf5:
+            return False            
         try:
-            # Create HDF5 file with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.file = h5py.File(f"recording_{timestamp}.h5", 'w')
-            
+            self.create_hdf5 = h5py.File(f"recording_{timestamp}.h5", 'w')
             # Store metadata if provided
             if metadata:
-                self.file.attrs.update(metadata)
+                self.create_hdf5.attrs.update(metadata)
             
             return True
             
         except Exception as e:
-            logger.error(f"Error starting recording: {e}")
+            logger.error(f"Error initialising h5 file: {e}")
             self._cleanup()
             return False
     
-    def start_saving(self, queue):
-        """Start the saving thread."""
+    def init_saving_thread(self, queue):
         if self.is_saving:
             return False
-            
+        
         self.is_saving = True
         self.saving_thread = threading.Thread(target=self._save_frames, args=(queue,), daemon=True)
         self.saving_thread.start()
         return True
         
-    def stop_saving(self):
-        """Stop the saving thread."""
+    def stop_saving_thread(self):
         self.is_saving = False
         if self.saving_thread:
             self.saving_thread.join(timeout=5.0)
             
     def _save_frames(self, queue):
-        """Save frames from queue to disk."""
         last_update = 0
         start_time = time.time()
         
@@ -75,7 +62,6 @@ class HDF5Logger:
                 if self._save_frame(frame, timestamp):
                     queue.frames_saved += 1
                     
-                # Update status every second
                 current_time = time.time()
                 if not self.is_saving and current_time - last_update >= 1.0:
                     self._update_save_status(queue, current_time, start_time)
@@ -86,21 +72,21 @@ class HDF5Logger:
                 time.sleep(0.1)
                 
     def _save_frame(self, frame, timestamp):
-        """Save a single frame to the HDF5 file."""
-        if not self.file:
+        """Save a single frame to the HDF5 create_hdf5."""
+        if not self.create_hdf5:
             return False
             
         try:
             # Initialize datasets on first frame
             if self.dataset is None:
-                self.dataset = self.file.create_dataset(
+                self.dataset = self.create_hdf5.create_dataset(
                     'frames',
                     shape=(0,) + frame.shape,
                     maxshape=(None,) + frame.shape,
                     dtype=frame.dtype,
                     chunks=True
                 )
-                self.timestamps = self.file.create_dataset(
+                self.timestamps = self.create_hdf5.create_dataset(
                     'timestamps',
                     shape=(0,),
                     maxshape=(None,),
@@ -119,7 +105,7 @@ class HDF5Logger:
             
             # Periodic flush to disk
             if self.frame_count % 100 == 0:
-                self.file.flush()
+                self.create_hdf5.flush()
                 
             return True
             
@@ -128,16 +114,13 @@ class HDF5Logger:
             return False
             
     def _update_save_status(self, queue, current_time, start_time):
-        """Update status message with saving progress."""
         queue_size = queue.get_queue_size()
-        
         update_notif(f"Saving Remaining Data in Queue... {queue_size}")
                 
     def cleanup(self, queue, was_streaming, window):
-        """Handle cleanup after recording stops."""
         try:
             # Stop saving thread first to prevent new frames from being added
-            self.stop_saving()
+            self.stop_saving_thread()
             
             # Wait for frames to be saved without timeout
             while not queue.is_empty():
@@ -149,7 +132,7 @@ class HDF5Logger:
                   f"Total frames recorded: {queue.frames_recorded}\n"
                   f"Total frames saved: {queue.frames_saved}\n"
                   f"Frames dropped: {queue.frames_dropped}\n"
-                  f"Frames remaining in queue: {queue.frame_queue.qsize()}")
+                  f"Frames remaining in queue: {queue.img_data_queue.qsize()}")
             
             # Save remaining frames in batches
             batch_size = 100  # Process frames in smaller batches
@@ -203,20 +186,20 @@ class HDF5Logger:
             
     def _save_batch(self, frames, timestamps):
         """Save a batch of frames and timestamps efficiently."""
-        if not self.file or not frames:
+        if not self.create_hdf5 or not frames:
             return False
             
         try:
             # Initialize datasets if needed
             if self.dataset is None:
-                self.dataset = self.file.create_dataset(
+                self.dataset = self.create_hdf5.create_dataset(
                     'frames',
                     shape=(0,) + frames[0].shape,
                     maxshape=(None,) + frames[0].shape,
                     dtype=frames[0].dtype,
                     chunks=True
                 )
-                self.timestamps = self.file.create_dataset(
+                self.timestamps = self.create_hdf5.create_dataset(
                     'timestamps',
                     shape=(0,),
                     maxshape=(None,),
@@ -235,7 +218,7 @@ class HDF5Logger:
                 self.timestamps[current_size + i] = timestamp
             
             self.frame_count = new_size
-            self.file.flush()  # Flush after batch save
+            self.create_hdf5.flush()  # Flush after batch save
             
             return True
             
@@ -245,14 +228,14 @@ class HDF5Logger:
             
     def _cleanup(self):
         """Clean up resources."""
-        if self.file:
+        if self.create_hdf5:
             try:
-                self.file.flush()
-                self.file.close()
+                self.create_hdf5.flush()
+                self.create_hdf5.close()
             except Exception as e:
-                logger.error(f"Error closing HDF5 file: {e}")
+                logger.error(f"Error closing HDF5 create_hdf5: {e}")
             finally:
-                self.file = None
+                self.create_hdf5 = None
                 self.dataset = None
                 self.timestamps = None
                 self.frame_count = 0 

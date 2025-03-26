@@ -1,27 +1,26 @@
-import threading
+import threading, time, logging
 from datetime import datetime
-import time
-from .log_HDF5 import HDF5Logger
-from .logging_queue import LoggingQueue
+import qtawesome as qta
+
+from .hdf5_handler import HDF5Handler
+from .data_queue_handler import ImgDataQueueHandler
 from interface.status_bar.update_notif import update_notif
 from utils import get_computer_name
-import qtawesome as qta
-import logging
 
 logger = logging.getLogger(__name__)
 
-class RecordStream:
+class AcquireStream:
     """Handles continuous recording of camera frames to a queue."""
     
     def __init__(self, stream_camera, window):
         self.stream_camera = stream_camera
         self.camera_control = stream_camera.camera_control
         self.window = window
-        self.logger = HDF5Logger()
+        self.h5_handler = HDF5Handler()
         
         # Initialize recording state
         self.queue = None
-        self.recording_thread = None
+        self.camera_aq__thread = None
         self.is_recording = False
         self.was_streaming = False
         
@@ -30,6 +29,7 @@ class RecordStream:
         
     def start_recording(self):
         """Start recording frames from camera."""
+        logging.info("Starting Recording")
         if self.is_recording:
             return False
             
@@ -44,7 +44,7 @@ class RecordStream:
             roi_height = self.camera_control.call_camera_command("height", "get")
             
             # Initialize queue with ROI dimensions
-            self.queue = LoggingQueue(self.window, roi_width, roi_height)
+            self.queue = ImgDataQueueHandler(self.window, roi_width, roi_height)
             self.queue.reset_stats()
             
             # Initialize recording
@@ -59,16 +59,16 @@ class RecordStream:
                 'roi_offset_y': self.camera_control.call_camera_command("offset_y", "get")
             }
             
-            if not self.logger.start_recording(metadata):
+            if not self.h5_handler.init_h5File(metadata):
                 raise Exception("Failed to start HDF5 logger")
             
             # Start recording thread and saving
             self.is_recording = True
-            self.recording_thread = threading.Thread(target=self._record_frames, daemon=True)
-            self.recording_thread.start()
+            self.camera_aq__thread = threading.Thread(target=self._record_frames, name="CameraAQThread", daemon=True)
+            self.camera_aq__thread.start()
             
             # Start saving frames
-            if not self.logger.start_saving(self.queue):
+            if not self.h5_handler.init_saving_thread(self.queue):
                 raise Exception("Failed to start saving thread")
             
             self.camera_control.start_camera()
@@ -79,7 +79,7 @@ class RecordStream:
             logger.error(f"Error Starting Recording: {e}")
             update_notif(f"Error Starting Recording: {e}")
             self.is_recording = False
-            self.logger.stop_recording()
+            self._cleanup()
             return False
             
     def stop_recording(self):
@@ -91,12 +91,12 @@ class RecordStream:
         self.is_recording = False
         self.camera_control.stop_camera()
         
-        if self.recording_thread:
-            self.recording_thread.join(timeout=5.0)  # Wait up to 5 seconds for recording to stop
+        if self.camera_aq__thread:
+            self.camera_aq__thread.join(timeout=5.0)  # Wait up to 5 seconds for recording to stop
         
         # Start cleanup in background
         cleanup_thread = threading.Thread(
-            target=self.logger.cleanup,
+            target=self.h5_handler.cleanup,
             args=(self.queue, self.was_streaming, self.window),
             daemon=True
         )
@@ -120,7 +120,7 @@ class RecordStream:
                         
                         # Start cleanup in background
                         cleanup_thread = threading.Thread(
-                            target=self.logger.cleanup,
+                            target=self.h5_handler.cleanup,
                             args=(self.queue, self.was_streaming, self.window),
                             daemon=True
                         )
@@ -134,3 +134,12 @@ class RecordStream:
             except Exception as e:
                 logger.error(f"Error recording frame: {e}")
                 time.sleep(0.1) 
+
+    def _cleanup(self):
+        self.queue = None
+        self.camera_aq__thread = None
+        self.was_streaming = False
+        self.is_recording = False
+        self.h5_handler = None
+        self.window = None
+        self.camera_control = None

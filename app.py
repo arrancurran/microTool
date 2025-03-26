@@ -6,7 +6,7 @@ from PyQt6.QtCore import QTimer
 from interface.ui import ui
 from interface.ui_methods import UIMethods
 from instruments.xicam.cam_methods import CameraControl, CameraSequences
-from acquisitions.stream_camera import StreamCamera
+from acquisitions.live_stream_handler import LiveStreamHandler
 from interface.status_bar.update_notif import set_main_window
 
 # Configure logging
@@ -42,7 +42,7 @@ class microTool():
         self.camera_control = CameraControl()
         self.camera_sequences = CameraSequences(self.camera_control)
         self.camera_sequences.connect_camera()
-        self.stream_camera = StreamCamera(self.camera_control)
+        self.stream_camera = LiveStreamHandler(self.camera_control)
        
         """UI Methods"""
         self.ui_methods = UIMethods(self.window, self.stream_camera)

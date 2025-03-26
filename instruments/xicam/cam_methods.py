@@ -16,14 +16,14 @@ Uses Ximea's xiapi for low-level camera control. Camera commands are defined in 
 
 Called by:
 - interface/camera_controls/control_manager.py: CameraControlManager uses CameraControl for all camera operations
-- acquisitions/stream_camera.py: StreamCamera uses CameraControl for frame capture and camera control
+- acquisitions/stream_camera.py: LiveStreamHandler uses CameraControl for frame capture and camera control
 - interface/ui_methods.py: UIMethods connects UI actions to camera controls
 - app.py: Main application initializes CameraControl on startup
 
 Key methods called:
 - initialize_camera(): Called during app startup
 - call_camera_command(): Called by control classes to get/set parameters
-- get_image(), get_image_data(): Called by StreamCamera for frame capture
+- get_image(), get_image_data(): Called by LiveStreamHandler for frame capture
 - start_camera(), stop_camera(): Called to control acquisition
 """
 
@@ -39,7 +39,7 @@ class CameraControl:
     """
     Called by:
     - interface/camera_controls/control_manager.py:CameraControlManager for camera operations
-    - acquisitions/stream_camera.py:StreamCamera for frame capture
+    - acquisitions/stream_camera.py:LiveStreamHandler for frame capture
     - interface/ui_methods.py:UIMethods for UI actions
     - app.py:microTool for initialization
 
@@ -86,7 +86,7 @@ class CameraControl:
         """Start the command processing thread."""
         if self.command_thread is None:
             self.running = True
-            self.command_thread = Thread(target=self._process_commands)
+            self.command_thread = Thread(target=self._process_commands, name="CameraControlThread")
             self.command_thread.daemon = True
             self.command_thread.start()
     
@@ -286,7 +286,7 @@ class CameraSequences():
     Called by:
     - app.py: Main application initializes CameraSequences on startup
     - interface/ui_methods.py: UIMethods uses sequences for camera operations
-    - acquisitions/stream_camera.py: StreamCamera uses sequences for streaming
+    - acquisitions/stream_camera.py: LiveStreamHandler uses sequences for streaming
 
     Example usage:
         # Initialize camera control and sequences
