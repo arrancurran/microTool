@@ -11,16 +11,11 @@ from interface.status_bar.update_notif import set_main_window
 
 # Configure logging
 def setup_logging():
-    """Configure logging to both file and console."""
-    # Create logs directory if it doesn't exist
     if not os.path.exists('logs'):
         os.makedirs('logs')
-    
-    # Create a timestamp for the log file name
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = f'logs/microTool_{timestamp}.log'
-    
-    # Configure logging
+
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(levelname)s - %(filename)s - %(funcName)s - %(threadName)s -%(message)s',
@@ -96,8 +91,6 @@ class microTool():
         sys.exit(self.app.exec())
         
 if __name__ == "__main__":
-    # Set up logging before creating the application
     setup_logging()
-    # Create and run the application
     app = microTool()
     app.run()
