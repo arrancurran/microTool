@@ -1,43 +1,24 @@
-"""
-UI methods for handling camera controls, ROI drawing, status updates, and image display.
-Manages interaction between UI components and camera functionality.
-"""
+
 
 from PyQt6.QtGui import QImage, QPixmap, QPainter
 from PyQt6.QtCore import Qt, QObject
-import time
+import qtawesome as qta
+import time, logging
 
-""" Import Classes """
 from .camera_controls.control_manager import CameraControlManager
 from .status_bar.status_bar_manager import StatusBarManager
 from acquisitions.acquire_stream import AcquireStream
 from acquisitions.snapshot import Snapshot
 from .draw_roi import DrawROI
 
-""" Import Functions """
 from interface.status_bar.update_notif import update_notif
-import qtawesome as qta
-import logging
 
 logger = logging.getLogger(__name__)
 
 class UIMethods(QObject):
-    """
-    Manages UI interactions and camera control methods.
-    
-    Called by:
-    - app.py: Main application uses UIMethods for UI-camera interaction
-    - interface/image_container.py: ImageContainer uses UIMethods for display updates
-    
-    Example usage:
-        window = ui()
-        stream_camera = LiveStreamHandler(camera_control)
-        ui_methods = UIMethods(window, stream_camera)
-        ui_methods.update_ui_image()  # Updates display with latest frame
-    """
+
     def __init__(self, window, stream_camera):
         
-        """Initialize UI methods with window and camera objects."""
         super().__init__()
         self.window = window
         self.stream_camera = stream_camera
@@ -63,44 +44,29 @@ class UIMethods(QObject):
         """Set the original image size"""
         self.original_image_size = None
 
-    def handle_mouse_press(self, event):
-        
-        """Handle mouse press events for ROI drawing."""
+    def handle_mouse_press(self, event):        
         self.draw_roi.mousePressEvent(event, self.window.image_container)
 
-    def handle_mouse_move(self, event):
-        
-        """Handle mouse move events for ROI drawing."""
+    def handle_mouse_move(self, event):        
         self.draw_roi.mouseMoveEvent(event, self.window.image_container)
 
     def handle_mouse_release(self, event):
-        
-        """Handle mouse release events for ROI drawing."""
         self.draw_roi.mouseReleaseEvent(event, self.window.image_container)
 
     def handle_paint(self, painter):
-        
-        """Handle paint events for ROI drawing."""
         self.draw_roi.draw_rectangle(painter, self.window.image_container)
     
     def handle_snapshot(self):
-        
-        """Handle snapshot button click."""
         if self.snapshot.save_snapshot():
-            # Update status bar to show success
             update_notif("Snapshot Saved", duration=2000)
         else:
-            # Update status bar to show failure
             update_notif("Failed to Save Snapshot", duration=2000)
     
     def handle_recording(self):
-        
-        """Handle record button toggle."""
         if not hasattr(self.window.start_recording, 'is_recording'):
             self.window.start_recording.is_recording = False
             
         if not self.window.start_recording.is_recording:
-            # Start recording
             if self.record_stream.start_recording():
                 self.window.start_recording.is_recording = True
                 # Get the stop recording icon from JSON
@@ -110,7 +76,6 @@ class UIMethods(QObject):
             else:
                 update_notif("Failed to Start Recording", duration=2000)
         else:
-            # Stop recording
             self.record_stream.stop_recording()
             self.window.start_recording.is_recording = False
             # Get the start recording icon from JSON
@@ -119,8 +84,7 @@ class UIMethods(QObject):
             update_notif("Recording Stopped", duration=2000)
     
     def update_ui_image(self):
-        
-        """Get the latest frame from the stream and update the UI image display."""
+
         np_image_data = self.stream_camera.get_img_from_queue()
         if np_image_data is None:
             return
@@ -139,18 +103,14 @@ class UIMethods(QObject):
             bytes_per_line = width
             image_data = QImage(np_image_data.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
             image = QPixmap(image_data)
-            
-            """Get container size"""
+
             container_size = self.window.image_container.size()
-            
-            """Calculate scaling to fit the image while maintaining aspect ratio"""
+
             scaled_image = image.scaled(container_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            
-            """Calculate the offset to center the image"""
+
             offset_x = (container_size.width() - scaled_image.width()) // 2
             offset_y = (container_size.height() - scaled_image.height()) // 2
             
-            """Calculate the scale factors"""
             scale_factor_x = scaled_image.width() / width
             scale_factor_y = scaled_image.height() / height
             
@@ -162,7 +122,7 @@ class UIMethods(QObject):
                 width, height
             )
             
-            """Create a new pixmap for drawing"""
+            """Create a new pixmap for drawing ROIs"""
             final_image = QPixmap(container_size)
             final_image.fill(Qt.GlobalColor.transparent)
             
@@ -177,7 +137,6 @@ class UIMethods(QObject):
             self.window.image_container.setPixmap(final_image)
             self.original_image_size = (width, height)
 
-        """Update the image histogram"""
         # TODO: Should this be done here? Maybe a separate thread or multiprocessing?
         self.window.histogram_plot.update(np_image_data)
     
