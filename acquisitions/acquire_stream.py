@@ -35,7 +35,7 @@ class AcquireStream:
             
         try:
             # Handle streaming state
-            self.was_streaming = (self.stream_camera.camera_thread is not None and self.stream_camera.camera_thread.isRunning())
+            self.was_streaming = (self.stream_camera.live_stream_qthread is not None and self.stream_camera.live_stream_qthread.isRunning())
             if self.was_streaming:
                 self.window.stop_stream.trigger()
             
