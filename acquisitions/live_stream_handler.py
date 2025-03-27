@@ -14,17 +14,21 @@ class LiveStreamQThread(QThread):
         self.live_is_running = True
         self.live_stream_freq = 60
 
+    # run() is a special method in QThread. It is automatically called when QThread is started using the start()
     def run(self):
+        self.live_stream_handler()
+        
+    def live_stream_handler(self):
         while self.live_is_running:
             try:
-                time.sleep(1/self.live_stream_freq)
-                
                 self.camera_control.get_image()
                 image_data = self.camera_control.get_image_data()
                 
                 if image_data is not None:
                     self.live_img_acq_qtSignal.emit(image_data)
-                
+                    # TODO: We should have a global freq for the ui.
+                    time.sleep(1/self.live_stream_freq)
+
             except Exception as e:
                 logger.error(f"Error in camera thread: {str(e)}")
                 time.sleep(0.1)  # Sleep briefly on error to prevent hammering CPU on error
@@ -52,18 +56,13 @@ class LiveStreamHandler(QObject):
             self.live_stream_qthread.start()
 
     def _handle_frame(self, image_data):
-        """Handle a new frame from the camera thread with throttling"""
-        current_time = time.time()
-        # Only process frame if enough time has passed (limit to 30 FPS for UI)
-        if not hasattr(self, '_last_frame_time') or (current_time - self._last_frame_time) >= 0.033:
-            self._last_frame_time = current_time
 
-            try:
-                if not self.live_stream_queue.full():
-                    self.live_stream_queue.put(image_data)
-                    self.live_img_in_queue_qtSignal.emit()
-            except Exception as e:
-                logger.error(f"Error handling frame: {str(e)}")
+        try:
+            if not self.live_stream_queue.full():
+                self.live_stream_queue.put(image_data)
+                self.live_img_in_queue_qtSignal.emit()
+        except Exception as e:
+            logger.error(f"Error handling frame: {str(e)}")
 
     def stop_stream(self):
         try:
