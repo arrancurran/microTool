@@ -1,5 +1,7 @@
 from PyQt6.QtCore import Qt, QRect, QPoint
-from PyQt6.QtGui import QPainter, QPen, QColor
+from PyQt6.QtGui import QPen, QColor
+
+""" Handles all the logic for drawing the ROI on the ui image display"""
 
 class DrawROI:
     def __init__(self):
@@ -15,18 +17,22 @@ class DrawROI:
         self.scaled_height = 0
         self.original_width = 0
         self.original_height = 0
+        
+        # Create the pen
+        self.pen = QPen(QColor(0, 255, 0))
+        self.pen.setWidth(1)
 
-    def mousePressEvent(self, event, image_label):
+    def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.drawing = True
-            self.start_point = self.map_to_image_coordinates(event.position(), image_label)
+            self.start_point = self.map_to_image_coordinates(event.position())
             # Convert tuple to QPoint
             start_point = QPoint(int(self.start_point[0]), int(self.start_point[1]))
             self.current_rect = QRect(start_point, start_point)
 
     def mouseMoveEvent(self, event, image_label):
         if self.drawing:
-            self.end_point = self.map_to_image_coordinates(event.position(), image_label)
+            self.end_point = self.map_to_image_coordinates(event.position())
             # Convert tuples to QPoints
             start_point = QPoint(int(self.start_point[0]), int(self.start_point[1]))
             end_point = QPoint(int(self.end_point[0]), int(self.end_point[1]))
@@ -36,21 +42,14 @@ class DrawROI:
     def mouseReleaseEvent(self, event, image_label):
         if event.button() == Qt.MouseButton.LeftButton:
             self.drawing = False
-            self.end_point = self.map_to_image_coordinates(event.position(), image_label)
+            self.end_point = self.map_to_image_coordinates(event.position())
             # Convert tuples to QPoints
             start_point = QPoint(int(self.start_point[0]), int(self.start_point[1]))
             end_point = QPoint(int(self.end_point[0]), int(self.end_point[1]))
             self.current_rect = QRect(start_point, end_point).normalized()
             image_label.update()
 
-    def map_to_image_coordinates(self, pos, image_label):
-        """Convert widget coordinates to image coordinates"""
-        # Get the position relative to the image label
-        label_pos = image_label.mapFromGlobal(pos.toPoint())
-        
-        # Get the label's position in the window
-        label_geometry = image_label.geometry()
-        
+    def map_to_image_coordinates(self, pos):
         # Calculate the actual position within the label
         relative_x = pos.x()
         relative_y = pos.y()
@@ -66,15 +65,13 @@ class DrawROI:
         # Map the position to the image coordinates using the scale factors
         image_x = int(adjusted_x / self.scale_factor_x)
         image_y = int(adjusted_y / self.scale_factor_y)
-        
+
         return image_x, image_y
 
-    def draw_rectangle(self, painter, image_label):
+    def draw_rectangle(self, painter):
         """Draw the current rectangle on the image"""
         if self.current_rect:
-            pen = QPen(QColor(255, 0, 0))  # Red color for the rectangle
-            pen.setWidth(2)
-            painter.setPen(pen)
+            painter.setPen(self.pen)
             
             # Get coordinates from QPoint objects
             top_left = self.current_rect.topLeft()

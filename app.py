@@ -50,8 +50,8 @@ class microTool():
 
         # Create a timer to update UI at a reasonable rate
         self.ui_update_timer = QTimer()
-        self.ui_update_timer.timeout.connect(self.ui_methods.update_ui_image)
-        self.ui_update_timer.start(33)  # ~30 FPS for UI updates
+        self.ui_update_timer.timeout.connect(self.ui_methods.update_img_display)
+        self.ui_update_timer.start(8)  # ~30 FPS for UI updates
         
         """Connect the window close event to our cleanup method"""
         self.window.closeEvent = self.cleanup

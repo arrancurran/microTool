@@ -1,31 +1,13 @@
-"""
-Custom QLabel subclass for handling ROI drawing interactions.
-Manages mouse events and painting for region of interest selection.
-"""
-
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtGui import QPainter
 
-class ImgDisp(QLabel):
-    """
-    Custom QLabel subclass for handling ROI drawing interactions.
-    Manages mouse events and painting for region of interest selection.
-    
-    Called by:
-    - interface/ui.py: Main UI creates ImgDisp for camera display
-    - interface/ui_methods.py: UIMethods handles the mouse/paint events
-    
-    Example usage:
-        image_container = ImgDisp()
-        image_container.ui_methods = ui_methods  # Connect UI methods
-        image_container.setPixmap(camera_frame)  # Display camera frame
-        # ROI drawing handled automatically via mouse events
-    """
+""" Captures mouse events and passes to ui_methods which in turn passes to DrawROI """
+class DispMouseHandler(QLabel):
 
-    #    TODO: Should we move this to ui_methods?
+
     def __init__(self, parent=None):
         
-        """Initialize the ImgDisp"""
+        """Initialize the DispMouseHandler"""
         super().__init__(parent)
         self.setMouseTracking(True)
         self.ui_methods = None
@@ -49,10 +31,9 @@ class ImgDisp(QLabel):
             self.ui_methods.handle_mouse_release(event)
 
     def paintEvent(self, event):
-        
         """Handle paint events"""
         super().paintEvent(event)
-        if self.ui_methods:
+        if self.ui_methods and self.ui_methods.draw_roi.current_rect:
             painter = QPainter(self)
             self.ui_methods.handle_paint(painter)
             painter.end()

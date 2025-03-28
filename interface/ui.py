@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, 
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
-from .img_disp import ImgDisp  # Import the ImgDisp class
+from .ui_img_disp import DispMouseHandler  # Import the DispMouseHandler class
 from utils.img_hist_disp import ImgHistDisplay
 
 class ui(QMainWindow):
@@ -73,7 +73,7 @@ class ui(QMainWindow):
         controls_layout = QHBoxLayout(controls_container)
 
         """Camera Image Container"""
-        self.image_container = ImgDisp(self)
+        self.image_container = DispMouseHandler(self)
         image_scaffolding = self.ui_scaffolding['image_display']
         self.image_container.setMinimumSize(image_scaffolding['min_width'], image_scaffolding['min_height'])
         self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
