@@ -25,6 +25,7 @@ qtawesome>=1.4.0     # UI icons
 tifffile>=2025.3.13  # TIFF file handling
 h5py>=3.13.0          # HDF5 file handling
 psutil>=6.1.1        # System resource monitoring
+pyqtgraph>=0.13.7    # Plotting and visualization
 
 # Optional Development Dependencies
 # pytest>=8.3.5        # Testing framework (optional, for running tests)
