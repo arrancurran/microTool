@@ -1,9 +1,8 @@
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtGui import QPainter
 
-""" Captures mouse events and passes to ui_methods which in turn passes to DrawROI """
+""" Captures mouse events in the image display and passes to UIMethods which in turn passes to DrawROI """
 class DispMouseHandler(QLabel):
-
 
     def __init__(self, parent=None):
         

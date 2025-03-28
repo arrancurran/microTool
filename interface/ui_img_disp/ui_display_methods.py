@@ -19,7 +19,8 @@ class UIDisplayMethods:
         self.original_image_size = None
         self._last_container_size = None
         self._cached_image_shape = None
-        self.status_bar_manager = status_bar_manager  # Store the status bar manager
+        self.status_bar_manager = status_bar_manager
+    
     def update_img_display(self):
 
         np_image_data = self.stream_camera.get_img_from_queue()
