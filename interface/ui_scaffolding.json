@@ -1,4 +1,11 @@
 {
+    "app": {
+        "name": "microTool",
+        "version": "0.0.0",
+        "description": "Control and image micro-particles.",
+        "icon": "fa5.camera",
+        "icon_color": "#FF4444"
+    },
     "toolbar": {
         "icons": {
             "Start Live Stream": {
