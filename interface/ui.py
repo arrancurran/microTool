@@ -140,9 +140,6 @@ class ui(QMainWindow):
         controls_layout.addWidget(roi_group)
         controls_layout.addWidget(right_column)
        
-
-
-        
         ### Add Columns to Controls Layout ###
         controls_layout.addWidget(roi_group)
         controls_layout.addWidget(right_column)
