@@ -3,7 +3,7 @@ import json, os
 import pyqtgraph as pg  
 import qtawesome as qta
 
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton, QGridLayout
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
@@ -19,23 +19,19 @@ class ui(QMainWindow):
         self.ui_scaffolding = self.load_ui_scaffolding('ui_scaffolding.json')
         ### TOOLBAR ###
         self.setup_toolbar()
-
         ### IMAGE CONTAINER ###
         # image_container = self.create_image_container()
-        
         ### HISTOGRAM ### 
         self.setup_histogram()
-        
         ### EXPOSURE SLIDER ###
         self.setup_exposure_slider()
-        
         ### STATUS BAR ###
         self.setup_status_bar()
         
         ### Build the rest of the UI ###
         self.build_ui()
         
-        # self.apply_styles()  # Apply styling after UI is built
+        # self.apply_styles()
 
     # def apply_styles(self):
     #     with open(os.path.join('interface', "style.css"), "r") as f:
@@ -64,24 +60,26 @@ class ui(QMainWindow):
         return image_container
     
     def create_roi_controls(self):
-        roi_group = QGroupBox("Region of Interest")
-        roi_layout = QVBoxLayout()
+        roi_group = QGroupBox()
+        roi_layout = QGridLayout(roi_group)
         
-        roi_form_layout = QFormLayout()
         self.roi_width = QSpinBox()
         self.roi_height = QSpinBox()
         self.roi_offset_x = QSpinBox()
         self.roi_offset_y = QSpinBox()
         
         roi_input_width = self.ui_scaffolding['roi']['input_width']
-        for spinbox in [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]:
-            spinbox.setFixedWidth(roi_input_width)
+        roi_labels = ["Width:", "Height:", "Offset X:", "Offset Y:"]
+        roi_spinboxes = [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]
         
-        roi_form_layout.addRow("Width:", self.roi_width)
-        roi_form_layout.addRow("Height:", self.roi_height)
-        roi_form_layout.addRow("Offset X:", self.roi_offset_x)
-        roi_form_layout.addRow("Offset Y:", self.roi_offset_y)
-        roi_layout.addLayout(roi_form_layout)
+        for label, spinbox in zip(roi_labels, roi_spinboxes):
+            spinbox.setFixedWidth(roi_input_width)
+            roi_item = roi_labels.index(label)
+            roi_grid_index = (roi_item // 2, roi_item % 2)
+            roi_layout.addWidget(spinbox, roi_grid_index[0], roi_grid_index[1])
+
+        # roi_layout.addLayout(roi_layout)
+        roi_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         # Add buttons below ROI controls
         button_container = QWidget()
@@ -103,7 +101,7 @@ class ui(QMainWindow):
     
     def setup_histogram(self):
         self.hist_display = pg.PlotWidget()
-        self.hist_display.setFixedSize(512, 120)
+        self.hist_display.setFixedSize(self.width()//2, 120)
         self.histogram_plot = ImgHistDisplay(self.hist_display)
     
     def setup_exposure_slider(self):
@@ -119,6 +117,7 @@ class ui(QMainWindow):
         right_layout.addWidget(self.exposure_slider)
         right_layout.addWidget(self.exposure_label)
         right_layout.addStretch()
+        right_column.setFixedSize(self.width()//2, self.height())
 
         right_column.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         return right_column
@@ -147,16 +146,14 @@ class ui(QMainWindow):
         controls_container = QWidget()
         controls_layout = QHBoxLayout(controls_container)
         
-        
         # Add ROI controls and right column to controls layout
         roi_group = self.create_roi_controls()
         right_column = self.create_right_column()
         controls_layout.addWidget(roi_group)
         controls_layout.addWidget(right_column)
        
-        
         # Add Sections to Main Layout with Proper Ratios
-        central_widget_layout.addWidget(self.image_container, 2)
+        central_widget_layout.addWidget(self.image_container, 1)
         central_widget_layout.addWidget(controls_container, 1)
         
         self.setWindowTitle(f"{self.ui_scaffolding['app']['name']} - {self.ui_scaffolding['app']['version']}")
