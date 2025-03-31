@@ -3,7 +3,7 @@ import json, os
 import pyqtgraph as pg  
 import qtawesome as qta
 
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy, QSpinBox, QGroupBox, QVBoxLayout, QFormLayout, QToolBar, QStatusBar, QPushButton, QGridLayout
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
@@ -53,74 +53,80 @@ class ui(QMainWindow):
     
     def create_image_container(self):
         image_container = DispMouseHandler(self)
-        image_scaffolding = self.ui_scaffolding['image_display']
-        image_container.setMinimumSize(image_scaffolding['min_width'], image_scaffolding['min_height'])
         image_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         return image_container
     
-    def create_roi_controls(self):
-        roi_group = QGroupBox()
-        roi_layout = QGridLayout(roi_group)
-        
-        self.roi_width = QSpinBox()
-        self.roi_height = QSpinBox()
-        self.roi_offset_x = QSpinBox()
-        self.roi_offset_y = QSpinBox()
-        
-        roi_input_width = self.ui_scaffolding['roi']['input_width']
-        roi_labels = ["Width:", "Height:", "Offset X:", "Offset Y:"]
-        roi_spinboxes = [self.roi_width, self.roi_height, self.roi_offset_x, self.roi_offset_y]
-        
-        for label, spinbox in zip(roi_labels, roi_spinboxes):
-            spinbox.setFixedWidth(roi_input_width)
-            roi_item = roi_labels.index(label)
-            roi_grid_index = (roi_item // 2, roi_item % 2)
-            roi_layout.addWidget(spinbox, roi_grid_index[0], roi_grid_index[1])
+    def setup_roi(self):
+        roi_group_widget = QWidget()
+        roi_grid_layout = QGridLayout(roi_group_widget)
+        roi_grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # roi_layout.addLayout(roi_layout)
-        roi_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        spinbox_width = self.ui_scaffolding['spinbox']['width']
         
-        # Add buttons below ROI controls
+        for count, (key, value)  in enumerate(self.ui_scaffolding['roi'].items()):
+            roi_spinbox = QSpinBox()
+            roi_label = QLabel(value.get("label", "No Label"))
+
+            roi_container = QWidget()
+            roi_layout = QHBoxLayout(roi_container)
+            roi_layout.setContentsMargins(0, 0, 0, 0)
+            
+            roi_layout.addWidget(roi_label)
+            roi_layout.addWidget(roi_spinbox)
+            
+            roi_spinbox.setFixedWidth(spinbox_width)
+            roi_spinbox.setAlignment(Qt.AlignmentFlag.AlignTop)
+            roi_spinbox.setToolTip(value.get("tooltip", "No Tooltip"))
+            
+            setattr(self, f"roi_{key}", roi_spinbox)
+            
+            roi_grid_index = (count // 2, count % 2)
+            
+            roi_grid_layout.addWidget(roi_container, roi_grid_index[0], roi_grid_index[1])
+            roi_grid_layout.setAlignment(roi_container, Qt.AlignmentFlag.AlignRight)
+
+        # Add buttons
         button_container = QWidget()
-        button_layout = QVBoxLayout(button_container)
-        button_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        button_layout = QHBoxLayout(button_container)
         
         self.apply_roi_button = QPushButton("Apply ROI")
-        self.apply_roi_button.setFixedWidth(200)
         button_layout.addWidget(self.apply_roi_button)
         
         self.reset_roi_button = QPushButton("Reset ROI")
-        self.reset_roi_button.setFixedWidth(200)
         button_layout.addWidget(self.reset_roi_button)
         
-        roi_layout.addWidget(button_container)
-        roi_group.setLayout(roi_layout)
-        roi_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        return roi_group
+        roi_grid_layout.addWidget(button_container, 2, 0, 1, 2)
+        
+        roi_group_widget.setLayout(roi_grid_layout)
+
+        return roi_group_widget
     
     def setup_histogram(self):
         self.hist_display = pg.PlotWidget()
-        self.hist_display.setFixedSize(self.width()//2, 120)
+        self.hist_display.setFixedHeight(120)
         self.histogram_plot = ImgHistDisplay(self.hist_display)
     
     def setup_exposure_slider(self):
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
         self.exposure_label = QLabel()
-        self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     
-    def create_right_column(self):
-        right_column = QWidget()
-        right_layout = QVBoxLayout(right_column)
+    def create_controls_narrow(self):
+        controls_narrow = QWidget()
+        controls_narrow_layout = QVBoxLayout(controls_narrow)
+        
+        controls_narrow_layout.addWidget(self.setup_roi())
+        # Add more controls here as needed
+        return controls_narrow
+    
+    def create_controls_wide(self):
+        controls_wide = QWidget()
+        controls_wide_layout = QVBoxLayout(controls_wide)
 
-        right_layout.addWidget(self.hist_display)
-        right_layout.addWidget(self.exposure_slider)
-        right_layout.addWidget(self.exposure_label)
-        right_layout.addStretch()
-        right_column.setFixedSize(self.width()//2, self.height())
+        controls_wide_layout.addWidget(self.hist_display)
+        controls_wide_layout.addWidget(self.exposure_slider)
+        controls_wide_layout.addWidget(self.exposure_label)
 
-        right_column.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        return right_column
+        return controls_wide
             
     def setup_status_bar(self):
         self.status_bar = QStatusBar()
@@ -139,21 +145,20 @@ class ui(QMainWindow):
         self.setCentralWidget(central_widget)
         central_widget_layout = QHBoxLayout(central_widget)
 
-         ### IMAGE CONTAINER ###
+         ### IMAGE  ###
         self.image_container = self.create_image_container()
+
+        ### CONTROLS  ###
+        controls_narrow = self.create_controls_narrow()
+        controls_wide = self.create_controls_wide()
+
+        # Add Sections to Main Layout
+        central_widget_layout.addWidget(self.image_container)
+        central_widget_layout.addWidget(controls_narrow)
+        central_widget_layout.addWidget(controls_wide)
         
-        ### CONTROLS CONTAINER ###
-        controls_container = QWidget()
-        controls_layout = QHBoxLayout(controls_container)
-        
-        # Add ROI controls and right column to controls layout
-        roi_group = self.create_roi_controls()
-        right_column = self.create_right_column()
-        controls_layout.addWidget(roi_group)
-        controls_layout.addWidget(right_column)
-       
-        # Add Sections to Main Layout with Proper Ratios
-        central_widget_layout.addWidget(self.image_container, 1)
-        central_widget_layout.addWidget(controls_container, 1)
+        central_widget_layout.setStretch(0, 5) # Set Image to 50%
+        central_widget_layout.setStretch(1, 2) # Set narrow to 20%
+        central_widget_layout.setStretch(2, 3) # Set wide to 30%
         
         self.setWindowTitle(f"{self.ui_scaffolding['app']['name']} - {self.ui_scaffolding['app']['version']}")

@@ -1,8 +1,6 @@
 """
 Exposure control for the camera.
 """
-from PyQt6.QtWidgets import QSlider
-from PyQt6.QtCore import Qt
 import logging
 
 from .base_control import NumericCameraControl

@@ -1,10 +1,13 @@
 {
   "app": {
     "name": "microTool",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "description": "Control and image micro-particles.",
     "icon": "fa5.camera",
     "icon_color": "#FF4444"
+  },
+  "spinbox": {
+    "width": 60
   },
   "toolbar": {
     "icons": {
@@ -45,31 +48,34 @@
       "streaming_bandwidth": "0.00 MB/s"
     }
   },
-  "image_display": {
-    "min_width": 640,
-    "min_height": 480
-  },
   "roi": {
-    "input_width": 60,
     "width": {
-      "min": 1,
-      "max": 2048,
-      "step": 1,
-      "default": 2048
-    },
-    "height": {
+      "label": "Width",
+      "tooltip": "Width of the region of interest",
       "min": 1,
       "max": 2048,
       "step": 1,
       "default": 2048
     },
     "offset_x": {
+      "label": "Offset",
+      "tooltip": "X offset of the region of interest",
       "min": 0,
       "max": 2048,
       "step": 1,
       "default": 0
     },
+    "height": {
+      "label": "Height",
+      "tooltip": "Height of the region of interest",
+      "min": 1,
+      "max": 2048,
+      "step": 1,
+      "default": 2048
+    },
     "offset_y": {
+      "label": "Offset",
+      "tooltip": "Y offset of the region of interest",
       "min": 0,
       "max": 2048,
       "step": 1,

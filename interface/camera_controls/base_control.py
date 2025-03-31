@@ -3,7 +3,6 @@ Base classes for camera controls.
 """
 from PyQt6.QtCore import QTimer
 from abc import ABC, abstractmethod
-from PyQt6.QtWidgets import QSlider
 import logging
 from typing import Any
 
