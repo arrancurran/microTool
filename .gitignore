@@ -14,7 +14,7 @@
 
 *.hdf5
 
-_tests/*
+_tests
 
 flow.md
 improvements.md
