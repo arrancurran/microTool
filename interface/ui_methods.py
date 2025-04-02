@@ -1,5 +1,3 @@
-
-
 from PyQt6.QtCore import QObject
 import qtawesome as qta
 import logging
