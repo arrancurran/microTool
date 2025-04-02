@@ -1,12 +1,8 @@
-"""
-Base classes for camera controls.
-"""
 from PyQt6.QtCore import QTimer
 from abc import ABC, abstractmethod
 import logging
 from typing import Any
 
-# Configure logging for this module
 logger = logging.getLogger(__name__)
 
 class CameraControl(ABC):
@@ -25,25 +21,17 @@ class CameraControl(ABC):
         
     @abstractmethod
     def setup_ui(self):
-        """Setup the UI elements for this control."""
         pass
         
     @abstractmethod
     def handle_value_change(self, value: Any) -> None:
-        """Handle changes to the control's value.
-        
-        This is the entry point for all value changes. Subclasses should implement
-        their specific handling logic while preserving any parent class behavior.
-        """
         pass
         
     @abstractmethod
     def _apply_change(self) -> None:
-        """Apply the pending change to the camera."""
         pass
 
 class NumericCameraControl(CameraControl):
-    """Base class for numeric camera controls (exposure, gain, etc.)."""
     def __init__(self, camera_control, window, command_name: str, display_name: str):
         super().__init__(camera_control, window)
         self.command_name = command_name
@@ -53,7 +41,6 @@ class NumericCameraControl(CameraControl):
         logger.debug(f"Initialized {display_name} control with command: {command_name}")
         
     def setup_ui(self):
-        """Get min/max from camera and setup the UI."""
         try:
             logger.debug(f"Getting {self.display_name} settings from camera...")
             
@@ -79,14 +66,9 @@ class NumericCameraControl(CameraControl):
             return None
         
     def handle_value_change(self, value: float) -> None:
-        """Queue value change with debouncing.
-        
-        This implementation handles the debouncing logic for numeric controls.
-        Subclasses should call this method after their specific handling.
-        """
-        self.logger.debug(f"{self.display_name} value change queued: {value}")
         self.pending_value = value
-        self.control_timer.start(50)  # 50ms debounce
+        self.control_timer.start(1)  # 1 ms debounce time
+        self.logger.debug(f"{self.display_name} value change queued: {value}")
         
     def _apply_change(self) -> None:
         """Apply the pending change to the camera."""
