@@ -1,56 +1,11 @@
-"""
-Core camera interface module that provides:
-
-1. CameraControl class for direct hardware control and parameter management
-   - Camera initialization and cleanup
-   - Image acquisition and streaming
-   - Parameter get/set via command queue
-   - Thread-safe camera access
-
-2. CameraSequences class for acquisition patterns
-   - Continuous streaming
-   - Time series capture
-   - Synchronized acquisition
-
-Uses Ximea's xiapi for low-level camera control. Camera commands are defined in commands.json.
-
-Called by:
-- interface/camera_controls/control_manager.py: CameraControlManager uses CameraControl for all camera operations
-- acquisitions/stream_camera.py: LiveStreamHandler uses CameraControl for frame capture and camera control
-- interface/ui_methods.py: UIMethods connects UI actions to camera controls
-- app.py: Main application initializes CameraControl on startup
-
-Key methods called:
-- initialize_camera(): Called during app startup
-- call_camera_command(): Called by control classes to get/set parameters
-- get_image(), get_image_data(): Called by LiveStreamHandler for frame capture
-- start_camera(), stop_camera(): Called to control acquisition
-"""
-
 import json
 from ximea import xiapi
 from queue import Queue
 from threading import Lock, Thread
 
-
 from . import logger
 
 class CameraControl:
-    """
-    Called by:
-    - interface/camera_controls/control_manager.py:CameraControlManager for camera operations
-    - acquisitions/stream_camera.py:LiveStreamHandler for frame capture
-    - interface/ui_methods.py:UIMethods for UI actions
-    - app.py:microTool for initialization
-
-    Example usage:
-        cam = CameraControl()
-        cam.initialize_camera()
-        cam.start_camera()
-        cam.call_camera_command("exposure", "set", 10000)  # 10ms exposure
-        image = cam.get_image()
-        cam.stop_camera()
-    """
     
     # TODO: We should set a custom size for ImageObject() according to the camera resolution
     # TODO: We should also set the image format to mono8 or mono16 depending on the camera
@@ -70,10 +25,9 @@ class CameraControl:
         self.camera_lock = Lock()
         self.command_thread = None
         self.running = True
-        
-    def _load_commands(self):
-       
-        """Load Ximea camera commands from the JSON file."""
+                
+    def _load_commands_from_json(self):
+               
         with open('instruments/xicam/commands.json', 'r') as file:
             commands = json.load(file)
         self.set_commands = {cmd['cmd']: cmd for cmd in commands['set']}
@@ -83,27 +37,23 @@ class CameraControl:
     
     def start_command_thread(self):
         
-        """Start the command processing thread."""
         if self.command_thread is None:
             self.running = True
-            self.command_thread = Thread(target=self._process_commands, name="CameraControlThread")
+            self.command_thread = Thread(target=self._process_commands_from_queue, name="CameraControlThread")
             self.command_thread.daemon = True
             self.command_thread.start()
     
     def stop_command_thread(self):
         
-        """Stop the command processing thread."""
         self.running = False
         if self.command_thread:
             self.command_thread.join()
             self.command_thread = None
     
-    def _process_commands(self):
+    def _process_commands_from_queue(self):
         
-        """Process commands from the queue."""
         while self.running:
             try:
-                # Get command from self.command_queue (initialized in __init__ from Queue()) with timeout to allow checking running flag
                 command = self.command_queue.get(timeout=0.1)
                 if command is None:
                     continue
@@ -126,25 +76,21 @@ class CameraControl:
                 continue
     
     def _execute_camera_command(self, friendly_name, method, value=None):
-       
-        """Execute a single camera command."""
         if not self.camera:
-            logger.error("CameraControl._execute_camera_command(): Camera not initialized.")
+            logger.error("Camera not initialized.")
             return None
 
-        """Look up command by friendly name in the appropriate dictionary"""
         cmd_dict = self.set_commands_by_name if method == "set" else self.get_commands_by_name
         if friendly_name not in cmd_dict:
-            logger.error(f"CameraControl._execute_camera_command(): Command with friendly name '{friendly_name}' not found in {method} commands.")
+            logger.error(f"Command with friendly name '{friendly_name}' not found in {method} commands.")
             return None
 
-        """Get the Ximea API command name for the API call"""
         cmd_info = cmd_dict[friendly_name]
         api_cmd_name = cmd_info['cmd']
         method_name = f"{method}_{api_cmd_name}"
         
         if not hasattr(self.camera, method_name):
-            logger.error(f"CameraControl._execute_camera_command(): Method {method_name} not found in xiapi.Camera")
+            logger.error(f"Method {method_name} not found in xiapi.Camera")
             return None
 
         try:
@@ -158,17 +104,19 @@ class CameraControl:
                     elif value_type == 'int':
                         value = int(value)
                 except (ValueError, TypeError) as e:
-                    logger.error(f"CameraControl._execute_camera_command(): Error converting value to {value_type}: {str(e)}")
+                    logger.error(f"Error converting value to {value_type}: {str(e)}")
                     return None
                     
-                logger.debug(f"CameraControl._execute_camera_command(): Setting {friendly_name} to {value} ({type(value)})")  # Debug print
+                logger.debug(f"Setting {friendly_name} to {value} ({type(value)})")  # Debug print
                 camera_method(value)
                 return value
             else:  # method == "get"
+                logger.debug(f"Getting {friendly_name} value")  # Debug print
                 result = camera_method()
                 return result
+            
         except Exception as e:
-            logger.error(f"CameraControl._execute_camera_command(): Error executing camera command {method_name}: {str(e)}")
+            logger.error(f"Error executing camera command {method_name}: {str(e)}")
             return None
     
     def call_camera_command(self, friendly_name, method, value=None):
@@ -182,7 +130,7 @@ class CameraControl:
                 result = result_queue.get(timeout=2.0)  # 2 second timeout for get operations
                 return result
             except:
-                logger.error("CameraControl.call_camera_command(): Timeout waiting for camera command result")
+                logger.error("Timeout waiting for camera command result")
                 return None
         return None
         
@@ -193,7 +141,7 @@ class CameraControl:
             with self.camera_lock:
                 self.camera = xiapi.Camera()
                 logger.debug("CameraControl.initialize_camera(): Camera object created.")
-                self._load_commands()  # Load commands first
+                self._load_commands_from_json()  # Load commands first
                 logger.debug("CameraControl.initialize_camera(): Commands loaded.")
                 self.start_command_thread()
                 logger.debug("CameraControl.initialize_camera(): Command thread started.")
