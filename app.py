@@ -18,7 +18,7 @@ def setup_logging():
 
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(levelname)s - %(filename)s - %(funcName)s - %(threadName)s -%(message)s',
+        format='%(levelname)s - %(threadName)s - %(filename)s - %(name)s:%(funcName)s() - %(message)s',
         handlers=[
             logging.FileHandler(log_file),
             logging.StreamHandler()  # Also log to console
@@ -29,7 +29,7 @@ def setup_logging():
 class microTool():
     def __init__(self):
         """UI Window"""
-        self.app = QApplication(sys.argv)
+        self.app = QApplication(sys.argv)   
         self.window = ui()
        
         """Camera Control"""
@@ -69,7 +69,7 @@ class microTool():
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
             event.accept()
-            logging.info("microTool.cleanup(): Resources cleaned up.")
+            logging.info("Resources cleaned up.")
         except Exception as e:
             logging.error(f"Error during cleanup: {e}")
             event.accept()
@@ -81,7 +81,7 @@ class microTool():
                 self.stream_camera.cleanup()
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
-            logging.info("microTool.__del__(): Resources cleaned up.")
+            logging.info("Resources cleaned up.")
         except Exception as e:
             logging.error(f"Error during __del__ cleanup: {e}")
     
