@@ -1,6 +1,3 @@
-"""
-HDF5 logging for camera acquisitions.
-"""
 import h5py, time, threading, logging
 import numpy as np
 from datetime import datetime
