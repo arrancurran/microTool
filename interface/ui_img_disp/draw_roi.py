@@ -1,8 +1,6 @@
 from PyQt6.QtCore import Qt, QRect, QPoint
 from PyQt6.QtGui import QPen, QColor
 
-""" Handles all the logic for drawing the ROI on the ui image display"""
-
 class DrawROI:
     def __init__(self):
         self.drawing = False
@@ -89,7 +87,6 @@ class DrawROI:
                            widget_y2 - widget_y1)
 
     def update_scale_and_offset(self, scale_factor_x, scale_factor_y, offset_x, offset_y, scaled_width, scaled_height, original_width, original_height):
-        """Update the scaling and offset values"""
         self.scale_factor_x = scale_factor_x
         self.scale_factor_y = scale_factor_y
         self.offset_x = offset_x
