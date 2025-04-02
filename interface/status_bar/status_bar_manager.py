@@ -34,10 +34,6 @@ class StatusBarManager(QObject):
         self.window = window
         self.camera_control = camera_control
         self.items: Dict[str, StatusBarItem] = {}
-        # self.update_timer = QTimer()
-        # self.update_timer.timeout.connect(self.update_all)
-        # TODO: We need to change this to only update when a control changes
-        # self.update_timer.start(50)  # Update every 50ms
         
     def initialize_items(self):
         """Initialize all registered status bar items."""
@@ -63,9 +59,7 @@ class StatusBarManager(QObject):
         
     def update_all(self):
         """Update all status bar items."""
-        # logger.debug("StatusBarManager: Starting update_all")  # Debug print
         for item_name, item in self.items.items():
-            # logger.debug(f"StatusBarManager: Updating {item_name}")  # Debug print
             item.update(self.camera_control)
             
     def update_on_control_change(self, control_name: str):
