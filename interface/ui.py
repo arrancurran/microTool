@@ -108,6 +108,8 @@ class ui(QMainWindow):
     
     def setup_exposure_slider(self):
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
+        self.exposure_slider.setTickInterval(5000)
+        self.exposure_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
         self.exposure_label = QLabel()
     
     def create_controls_narrow(self):
