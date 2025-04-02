@@ -109,7 +109,6 @@ class UIDisplayMethods:
             """Update the ROI spinboxes"""
             self.window.roi_width.setValue(width)
             self.window.roi_height.setValue(height)
-            time.sleep(0.2) # Wait for the offset to update
             self.window.roi_offset_x.setValue(new_offset_x)
             self.window.roi_offset_y.setValue(new_offset_y)
             
