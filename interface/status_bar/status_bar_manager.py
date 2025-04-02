@@ -34,10 +34,10 @@ class StatusBarManager(QObject):
         self.window = window
         self.camera_control = camera_control
         self.items: Dict[str, StatusBarItem] = {}
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_all)
+        # self.update_timer = QTimer()
+        # self.update_timer.timeout.connect(self.update_all)
         # TODO: We need to change this to only update when a control changes
-        self.update_timer.start(50)  # Update every 50ms
+        # self.update_timer.start(50)  # Update every 50ms
         
     def initialize_items(self):
         """Initialize all registered status bar items."""
@@ -74,9 +74,12 @@ class StatusBarManager(QObject):
         
         # Define which items should update for each control
         control_updates = {
-            'roi': ['roi_data', 'image_size_on_disk', 'streaming_bandwidth'],
+            'width': ['roi_data', 'image_size_on_disk', 'streaming_bandwidth'],
+            'height': ['roi_data', 'image_size_on_disk', 'streaming_bandwidth'],
+            'offset_x': ['roi_data'],
+            'offset_y': ['roi_data'],
             'framerate': ['framerate', 'streaming_bandwidth'],
-            'exposure': []  # Exposure changes don't affect status bar directly
+            'exposure': ['framerate', 'streaming_bandwidth']  # Exposure changes affect the framerate
         }
         
         # Update relevant items

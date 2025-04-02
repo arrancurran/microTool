@@ -1,24 +1,16 @@
-"""Controls for camera Region of Interest (ROI) settings - width, height, and offsets."""
 from .base_control import NumericCameraControl
 import logging
 
 logger = logging.getLogger(__name__)
 
 class ROIControl(NumericCameraControl):
-    """
-    Controls camera Region of Interest (ROI) settings via spinboxes in the UI.
-    Called by the main app to initialize camera controls.
-    Example usage:
-        roi_control = ROIControl(camera_control, window)
-        roi_control.setup_ui()  # Configures spinboxes with camera's ROI limits
-    """
     
     def __init__(self, camera_control, window):
         super().__init__(
             camera_control=camera_control,
             window=window,
-            command_name="roi",  # Not actually used, we handle commands directly
-            display_name="ROI"
+            display_name="ROI",
+            command_name="roi"
         )
         # Store references to spinboxes and their corresponding camera commands
         self.controls = {
@@ -32,9 +24,7 @@ class ROIControl(NumericCameraControl):
         self.max_dimensions = None
         
     def setup_ui(self) -> bool:
-        """Set up the ROI UI elements."""
         try:
-            # Get max dimensions from camera
             self.max_dimensions = {
                 'width': self.camera_control.call_camera_command("width_max", "get"),
                 'height': self.camera_control.call_camera_command("height_max", "get")
@@ -84,7 +74,6 @@ class ROIControl(NumericCameraControl):
             return False
             
     def handle_value_change(self, value, command):
-        """Handle ROI spinbox value changes."""
         try:
             # Update camera
             self.camera_control.call_camera_command(command, "set", value)
@@ -105,8 +94,9 @@ class ROIControl(NumericCameraControl):
                     self.window.roi_offset_y.setMaximum(max_offset)
                     
             # Update status bar
-            if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
-                self.window.ui_methods.status_bar_manager.update_on_control_change(command)
+            #  TODO: We need to clean up self.window so it makes sense for both here and image_container
+            self.window.image_container.ui_methods.status_bar_manager.update_on_control_change(command)
+
                 
         except Exception as e:
             logger.error(f"Error handling ROI change: {str(e)}")
