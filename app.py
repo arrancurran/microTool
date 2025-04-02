@@ -31,7 +31,7 @@ class microTool():
         """UI Window"""
         self.app = QApplication(sys.argv)   
         self.window = ui()
-       
+                
         """Camera Control"""
         self.camera_control = CameraControl()
         self.camera_sequences = CameraSequences(self.camera_control)
@@ -60,8 +60,10 @@ class microTool():
         self.window.stop_stream.triggered.connect(self.stream_camera.stop_stream)
         self.window.snapshot.triggered.connect(self.ui_methods.handle_snapshot)
         self.window.start_recording.triggered.connect(self.ui_methods.handle_recording)
-    
-    """Clean up resources before the application closes."""
+        
+        # TODO: ui_methods should be an attribute of window
+        self.window.image_container.ui_methods.status_bar_manager.update_all()
+        
     def cleanup(self, event):
         try:
             if hasattr(self, 'stream_camera'):
