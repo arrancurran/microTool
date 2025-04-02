@@ -1,9 +1,8 @@
 
 
-from PyQt6.QtGui import QImage, QPixmap, QPainter
-from PyQt6.QtCore import Qt, QObject
+from PyQt6.QtCore import QObject
 import qtawesome as qta
-import time, logging
+import logging
 
 from .camera_controls.control_manager import CameraControlManager
 from .status_bar.status_bar_manager import StatusBarManager
