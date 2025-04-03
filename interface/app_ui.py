@@ -11,7 +11,7 @@ from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
 
 # Inherit from QMainWindow so ui is our main window
-class ui(QMainWindow):
+class AppUI(QMainWindow):
 
     def __init__(self):
 
