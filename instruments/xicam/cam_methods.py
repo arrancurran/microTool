@@ -11,8 +11,6 @@ class CameraControl:
     # TODO: We should also set the image format to mono8 or mono16 depending on the camera
 
     def __init__(self):
-        
-        """Initialize the camera object."""
         self.camera = None
         self.image = None
         self.set_commands = {}
@@ -140,13 +138,13 @@ class CameraControl:
         if self.camera is None:
             with self.camera_lock:
                 self.camera = xiapi.Camera()
-                logger.debug("CameraControl.initialize_camera(): Camera object created.")
+                logger.debug("Camera object created.")
                 self._load_commands_from_json()  # Load commands first
-                logger.debug("CameraControl.initialize_camera(): Commands loaded.")
+                logger.debug("Commands loaded from JSON.")
                 self.start_command_thread()
-                logger.debug("CameraControl.initialize_camera(): Command thread started.")
+                logger.debug("Command thread started.")
         else:
-            logger.debug("CameraControl.initialize_camera(): Camera already initialized.")
+            logger.debug("Camera already initialized.")
 
     def open_camera(self):
         
@@ -154,18 +152,18 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.open_device()
-                logger.debug("CameraControl.open_camera(): Camera connection established.")
+                logger.debug("Camera connection established.")
         else:
-            logger.error("CameraControl.open_camera(): Camera connection not established.")
+            logger.error("Camera connection not established.")
 
     def ImageObject(self):
         
         """Create an image object."""
         if self.image is None:
             self.image = xiapi.Image()
-            logger.debug("CameraControl.ImageObject(): Image object created.")
+            logger.debug("Image object created.")
         else:
-            logger.debug("CameraControl.ImageObject(): Image object already created.")
+            logger.debug("Image object already created.")
 
     def start_camera(self):
         
@@ -173,9 +171,9 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.start_acquisition()
-                logger.debug("CameraControl.start_camera(): Camera acquisition started.")
+                logger.debug("Camera acquisition started.")
         else:
-            logger.error("CameraControl.start_camera(): Camera failed to start acquisition.")
+            logger.error("Camera failed to start acquisition.")
     
     def get_image(self):
         
@@ -184,7 +182,7 @@ class CameraControl:
             with self.camera_lock:
                 return self.camera.get_image(self.image)
         else:
-            logger.error("CameraControl.get_image(): Image object doesn't exist.")
+            logger.error("Image object doesn't exist.")
 
     def get_image_data(self):
         
@@ -192,7 +190,7 @@ class CameraControl:
         if self.image:
             return self.image.get_image_data_numpy()
         else:
-            logger.error("CameraControl.get_image_data(): Failed to get image numpy data.")
+            logger.error("Failed to get image numpy data.")
     
     def get_image_timestamp(self):
         
@@ -203,7 +201,7 @@ class CameraControl:
             timestamp = tsSec + tsUSec / 1e6
             return timestamp
         else:
-            logger.error("CameraControl.get_image_timestamp(): Failed to get image timestamp.")
+            logger.error("Failed to get image timestamp.")
     
     def stop_camera(self):
         
@@ -211,9 +209,9 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.stop_acquisition()
-                logger.debug("CameraControl.stop_camera(): Camera acquisition stopped.")
+                logger.debug("Camera acquisition stopped.")
         else:
-            logger.error("CameraControl.stop_camera(): Camera failed to stop acquisition.")
+            logger.error("Camera failed to stop acquisition.")
 
     def close(self):
         
@@ -222,10 +220,10 @@ class CameraControl:
         if self.camera:
             with self.camera_lock:
                 self.camera.close_device()
-                logger.debug("CameraControl.close(): Camera closed.")
+                logger.debug("Camera closed.")
                 self.camera = None
         else:
-            logger.error("CameraControl.close(): Camera failed to close.")
+            logger.error("Camera failed to close.")
 
 class CameraSequences():
     """

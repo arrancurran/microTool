@@ -7,7 +7,6 @@ from typing import Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)  # This will suppress DEBUG, INFO, and WARNING messages
 
 class StatusBarItem(ABC):
     """Base class for all status bar items."""

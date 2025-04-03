@@ -1,7 +1,7 @@
 """
 Manager for updating the status bar with camera information.
 """
-from PyQt6.QtCore import QObject, QTimer
+from PyQt6.QtCore import QObject
 from typing import Dict, Type
 import logging
 
@@ -68,8 +68,8 @@ class StatusBarManager(QObject):
         
         # Define which items should update for each control
         control_updates = {
-            'width': ['roi_data', 'image_size_on_disk', 'streaming_bandwidth'],
-            'height': ['roi_data', 'image_size_on_disk', 'streaming_bandwidth'],
+            'width': ['roi_data', 'image_size_on_disk', 'framerate', 'streaming_bandwidth'],
+            'height': ['roi_data', 'image_size_on_disk', 'framerate', 'streaming_bandwidth'],
             'offset_x': ['roi_data'],
             'offset_y': ['roi_data'],
             'framerate': ['framerate', 'streaming_bandwidth'],
