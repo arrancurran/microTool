@@ -3,10 +3,12 @@ from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
 
-from interface.ui import ui
-from interface.ui_methods import UIMethods
-from instruments.xicam.cam_methods import CameraControl, CameraSequences
+from interface import AppUI, UIMethods
+
+from instruments import CameraControl, CameraSequences
+
 from acquisitions.live_stream_handler import LiveStreamHandler
+
 from interface.status_bar.update_notif import set_main_window
 
 # Configure global logging
@@ -30,7 +32,7 @@ class microTool():
     def __init__(self):
         """UI Window"""
         self.app = QApplication(sys.argv)   
-        self.window = ui()
+        self.window = AppUI()
                 
         """Camera Control"""
         self.camera_control = CameraControl()
@@ -62,7 +64,7 @@ class microTool():
         self.window.start_recording.triggered.connect(self.ui_methods.handle_recording)
         
         # TODO: ui_methods should be an attribute of window
-        self.window.image_container.ui_methods.status_bar_manager.update_all()
+        self.ui_methods.status_bar_manager.update_all()
         
     def cleanup(self, event):
         try:

@@ -1,0 +1,1 @@
+from .update_notif import update_notif
