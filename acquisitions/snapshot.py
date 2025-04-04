@@ -31,7 +31,8 @@ class Snapshot:
                 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"snapshot_{timestamp}.tiff"
+            # TODO: Create UI to select save location
+            filename = f"_data/snapshot_{timestamp}.tiff"
             
             # Save the image as TIFF
             tifffile.imwrite(filename, snapshot)
