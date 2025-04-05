@@ -49,14 +49,18 @@ class AcquireStream:
             
             # Initialize recording
             metadata = {
-                'computer_name': get_computer_name(),
-                'camera_model': self.camera_control.camera.get_device_name().decode('utf-8'),
-                'timestamp': datetime.now().isoformat(),
-                'exposure': self.camera_control.call_camera_command("exposure", "get"),
-                'roi_width': roi_width,
-                'roi_height': roi_height,
-                'roi_offset_x': self.camera_control.call_camera_command("offset_x", "get"),
-                'roi_offset_y': self.camera_control.call_camera_command("offset_y", "get")
+                'Computer Name': get_computer_name(),
+                'Acquisition Type': 'Live Stream',
+                # TODO: Add software version dynamically
+                'Software Name': 'microTool',
+                'Software Version': 'v1.0',
+                'Camera Model': self.camera_control.camera.get_device_name().decode('utf-8'),
+                'Start Time': datetime.now().isoformat(),
+                'Exposure': self.camera_control.call_camera_command("exposure", "get"),
+                'ROI Width': roi_width,
+                'ROI Height': roi_height,
+                'ROI Offset X': self.camera_control.call_camera_command("offset_x", "get"),
+                'ROI Offset Y': self.camera_control.call_camera_command("offset_y", "get")
             }
             
             if not self.h5_handler.init_h5File(metadata):

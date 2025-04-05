@@ -19,7 +19,7 @@ class HDF5Handler:
         if self.create_hdf5:
             return False            
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = "" #datetime.now().strftime("%Y%m%d_%H%M%S")
             # TODO: Create UI to select save location
             self.create_hdf5 = h5py.File(f"_data/recording_{timestamp}.h5", 'w')
             # Store metadata if provided
