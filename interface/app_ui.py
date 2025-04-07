@@ -1,4 +1,5 @@
 
+# Create all the UI elements and set their layout and properties
 import json, os
 import pyqtgraph as pg  
 import qtawesome as qta

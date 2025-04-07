@@ -30,8 +30,8 @@ def setup_logging():
 
 class microTool():
     def __init__(self):
-        """UI Window"""
-        self.app = QApplication(sys.argv)   
+        # Passing sys.argv so any command-line arguments are forwarded. 
+        self.app = QApplication(sys.argv)
         self.window = AppUI()
                 
         """Camera Control"""
