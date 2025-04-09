@@ -11,6 +11,8 @@ from acquisitions.live_stream_handler import LiveStreamHandler
 
 from interface.status_bar.update_notif import set_main_window
 
+from utils import PopupNotifManager
+
 # Configure global logging
 def setup_logging():
     if not os.path.exists('logs'):

@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "microTool",
-    "version": "0.2.28",
+    "version": "0.2.29",
     "description": "Control and image micro-particles.",
     "icon": "fa5.camera",
     "icon_color": "#FF4444"

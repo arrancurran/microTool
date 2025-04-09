@@ -64,7 +64,7 @@ class StatusBarManager(QObject):
             
     def update_on_control_change(self, control_name: str):
         """Update status bar items based on which control changed."""
-        logger.debug(f"StatusBarManager: Update triggered by {control_name}")  # Debug print
+        logger.debug(f"Update triggered by {control_name}")  # Debug print
         
         # Define which items should update for each control
         control_updates = {
@@ -80,10 +80,10 @@ class StatusBarManager(QObject):
         if control_name in control_updates:
             for item_name in control_updates[control_name]:
                 if item_name in self.items:
-                    logger.debug(f"StatusBarManager: Updating {item_name} for {control_name} change")  # Debug print
+                    logger.debug(f"Updating {item_name} for {control_name} change")  # Debug print
                     self.items[item_name].update(self.camera_control)
         else:
-            logger.debug(f"StatusBarManager: Unknown control name: {control_name}")  # Debug print
+            logger.debug(f"Unknown control name: {control_name}")  # Debug print
             
     def cleanup(self):
         """Cleanup the status bar manager."""

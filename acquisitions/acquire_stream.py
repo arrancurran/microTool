@@ -27,8 +27,9 @@ class AcquireStream:
         # Connect stop signal to window
         self.window.start_recording.triggered.connect(self.stop_recording)
         
-    def start_recording(self):
+    def start_recording(self, path=None):
         """Start recording frames from camera."""
+        print(path)
         logging.info("Starting Recording")
         if self.is_recording:
             return False
@@ -63,7 +64,7 @@ class AcquireStream:
                 'ROI Offset Y': self.camera_control.call_camera_command("offset_y", "get")
             }
             
-            if not self.h5_handler.init_h5File(metadata):
+            if not self.h5_handler.init_h5File(metadata, path):
                 raise Exception("Failed to start HDF5 logger")
             
             # Start recording thread and saving

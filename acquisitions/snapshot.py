@@ -12,7 +12,7 @@ class Snapshot:
         self.camera_control = stream_camera.camera_control
         self.window = window
     
-    def save_snapshot(self):
+    def save_snapshot(self, snapshot_path):
         # Check if camera is streaming
         was_streaming = self.stream_camera.live_stream_qthread is not None and self.stream_camera.live_stream_qthread.isRunning()
         
@@ -29,10 +29,9 @@ class Snapshot:
                 logger.error("Failed to capture snapshot")
                 return False
                 
-            # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            # TODO: Create UI to select save location
-            filename = f"_data/snapshot_{timestamp}.tiff"
+            
+            filename = f"{snapshot_path}_{timestamp}.tiff"
             
             # Save the image as TIFF
             tifffile.imwrite(filename, snapshot)

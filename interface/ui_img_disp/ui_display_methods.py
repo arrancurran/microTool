@@ -1,9 +1,8 @@
 from PyQt6.QtGui import QImage, QPixmap, QPainter
 from PyQt6.QtCore import Qt
 from .draw_roi import DrawROI
-from interface.status_bar.update_notif import update_notif
 import logging, time
-from interface.camera_controls.control_manager import CameraControlManager
+from utils import PopupNotifManager
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +19,7 @@ class UIDisplayMethods:
         self._last_container_size = None
         self._cached_image_shape = None
         self.status_bar_manager = status_bar_manager
+        self.popup_manager = PopupNotifManager(self.window)
     
     def update_img_display(self):
 
@@ -118,7 +118,7 @@ class UIDisplayMethods:
             """Clear the  rectangle"""
             self.draw_roi.current_rect = None
         else:
-            update_notif("No ROI Selected", duration=2000)
+            self.popup_manager.show_popup_notif("No ROI Selected")
     
     def _sanity_check_roi(self, command, value):
         """Sanity check the ROI values."""
@@ -158,7 +158,7 @@ class UIDisplayMethods:
             
         except Exception as e:
             logger.error(f"Error resetting ROI: {str(e)}")
-            update_notif("Failed to Reset ROI", duration=2000)
+            self.popup_manager.show_popup_notif("Failed to Reset ROI")
     
     
     def handle_mouse_press(self, event):
