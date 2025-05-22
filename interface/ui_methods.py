@@ -70,7 +70,7 @@ class UIMethods(QObject):
         snapshot_path = self.popup_request_path()
         if snapshot_path is not None:
             self.snapshot.save_snapshot(snapshot_path)
-            self.popup_manager.show_popup_notif("Snapshot Saved")  # Uncommented to show notification
+            self.popup_manager.show_popup_notif("Snapshot Saved", button="Stop")  # Uncommented to show notification
         else:
             self.popup_manager.show_popup_notif("Failed to Save Snapshot")
     
