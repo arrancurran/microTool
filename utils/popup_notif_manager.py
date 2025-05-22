@@ -5,7 +5,7 @@ class PopupNotifManager:
         self.parent = parent
         self.popup = None
 
-    def show_popup_notif(self, message):
+    def show_popup_notif(self, message, button=None):
         # Check if the popup exists and is visible.
         if self.popup is not None and self.popup.isVisible():
             try:
@@ -15,7 +15,7 @@ class PopupNotifManager:
                 self.popup = None
 
         # Create a new popup.
-        self.popup = PopupNotif(message, self.parent)
+        self.popup = PopupNotif(message, button, self.parent)
         self.popup.destroyed.connect(self.on_popup_destroyed)
         self.popup.show()
 
