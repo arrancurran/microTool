@@ -10,7 +10,6 @@ from utils import get_computer_name
 logger = logging.getLogger(__name__)
 
 class AcquireStream:
-    """Handles continuous recording of camera frames to a queue."""
     
     def __init__(self, stream_camera, window):
         self.stream_camera = stream_camera
@@ -28,8 +27,6 @@ class AcquireStream:
         self.window.start_recording.triggered.connect(self.stop_recording)
         
     def start_recording(self, path=None):
-        """Start recording frames from camera."""
-        print(path)
         logging.info("Starting Recording")
         if self.is_recording:
             return False
@@ -65,7 +62,7 @@ class AcquireStream:
             }
             
             if not self.h5_handler.init_h5File(metadata, path):
-                raise Exception("Failed to start HDF5 logger")
+                raise Exception("Failed to create HDF5 file")
             
             # Start recording thread and saving
             self.is_recording = True
@@ -88,7 +85,6 @@ class AcquireStream:
             return False
             
     def stop_recording(self):
-        """Stop recording and save remaining frames."""
         if not self.is_recording:
             return
             
