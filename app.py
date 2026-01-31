@@ -64,6 +64,9 @@ class microTool():
         self.window.stop_stream.triggered.connect(self.stream_camera.stop_stream)
         self.window.snapshot.triggered.connect(self.ui_methods.handle_snapshot)
         self.window.start_recording.triggered.connect(self.ui_methods.handle_recording)
+        # Experiment acquisition: fixed number of frames
+        if hasattr(self.window, "start_experiment"):
+            self.window.start_experiment.triggered.connect(self.ui_methods.handle_experiment)
         
         # TODO: ui_methods should be an attribute of window
         self.ui_methods.status_bar_manager.update_all()
@@ -92,7 +95,8 @@ class microTool():
             logging.error(f"Error during __del__ cleanup: {e}")
     
     def run(self):
-        self.window.show()
+        # Start the application in full screen
+        self.window.showFullScreen()
         sys.exit(self.app.exec())
         
 if __name__ == "__main__":

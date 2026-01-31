@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "microTool",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "description": "Control and image micro-particles.",
     "icon": "fa5.camera",
     "icon_color": "#FF4444"
@@ -31,6 +31,11 @@
           "tooltip": "Stop Recording",
           "icon_color": "#FF4444"
         }
+      },
+      "Start Experiment": {
+        "icon": "fa5s.flask",
+        "cmd": "start_experiment",
+        "tooltip": "Start Fixed-Frame Experiment"
       },
       "Snapshot": {
         "icon": "fa5s.camera",

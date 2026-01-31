@@ -87,8 +87,33 @@ class FramerateControl(NumericCameraControl):
     def handle_value_change(self, value):
         """Handle framerate slider value changes."""
         logger.debug(f"Framerate value changed to: {value}")  # Debug print
-        self._format_and_update_label(value)
-        super().handle_value_change(float(value))  # Convert back to float for camera
+
+        # Always respect the camera's current maximum framerate. The
+        # hardware max can change when ROI/exposure changes, so we query it
+        # on each user update and clamp if necessary.
+        try:
+            max_val = self.camera_control.call_camera_command("framerate_max", "get")
+        except Exception:
+            max_val = None
+
+        clamped_value = float(value)
+        if max_val is not None and clamped_value > max_val:
+            logger.info(
+                f"Requested framerate {clamped_value} Hz exceeds camera max {max_val} Hz. "
+                "Clamping to max."
+            )
+            clamped_value = float(max_val)
+
+            # Update slider position without re-triggering this handler
+            try:
+                self.window.framerate_slider.blockSignals(True)
+                self.window.framerate_slider.setValue(int(round(clamped_value)))
+                self.window.framerate_slider.blockSignals(False)
+            except Exception as ui_err:
+                logger.error(f"Error updating framerate slider after clamping: {ui_err}")
+
+        self._format_and_update_label(clamped_value)
+        super().handle_value_change(float(clamped_value))  # Convert back to float for camera
         
     def _apply_change(self):
         """Apply the pending framerate change to the camera."""

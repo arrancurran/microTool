@@ -4,7 +4,7 @@ import json, os
 import pyqtgraph as pg  
 import qtawesome as qta
 
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout, QLineEdit, QFileDialog, QGroupBox
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
@@ -106,28 +106,100 @@ class AppUI(QMainWindow):
         self.hist_display = pg.PlotWidget()
         self.hist_display.setFixedHeight(120)
         self.histogram_plot = ImgHistDisplay(self.hist_display)
+
+    def setup_experiment_controls(self):
+        """Create controls for experiment directory, name, and frame rate.
+
+        Displayed inside a titled group box "Acquisition Settings".
+        """
+        group = QGroupBox("Acquisition Settings")
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Directory row
+        dir_row = QWidget()
+        dir_layout = QHBoxLayout(dir_row)
+        dir_layout.setContentsMargins(0, 0, 0, 0)
+
+        dir_label = QLabel("Directory:")
+        self.experiment_dir_edit = QLineEdit()
+        browse_button = QPushButton("Browse")
+
+        dir_layout.addWidget(dir_label)
+        dir_layout.addWidget(self.experiment_dir_edit)
+        dir_layout.addWidget(browse_button)
+
+        # Experiment name row
+        name_row = QWidget()
+        name_layout = QHBoxLayout(name_row)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+
+        name_label = QLabel("Experiment name:")
+        self.experiment_name_edit = QLineEdit()
+
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(self.experiment_name_edit)
+
+        # Experiment frame rate row
+        fr_row = QWidget()
+        fr_layout = QHBoxLayout(fr_row)
+        fr_layout.setContentsMargins(0, 0, 0, 0)
+
+        fr_label = QLabel("Frame rate (Hz):")
+        self.experiment_framerate_edit = QLineEdit()
+
+        fr_layout.addWidget(fr_label)
+        fr_layout.addWidget(self.experiment_framerate_edit)
+
+        layout.addWidget(dir_row)
+        layout.addWidget(name_row)
+        layout.addWidget(fr_row)
+
+        # Connect browse button to QFileDialog
+        def _browse_dir():
+            directory = QFileDialog.getExistingDirectory(self, "Select Experiment Directory")
+            if directory:
+                self.experiment_dir_edit.setText(directory)
+
+        browse_button.clicked.connect(_browse_dir)
+
+        return group
     
     def setup_exposure_slider(self):
+        # Container so slider and label can sit side by side
+        self.exposure_container = QWidget()
+        exposure_layout = QHBoxLayout(self.exposure_container)
+        exposure_layout.setContentsMargins(0, 0, 0, 0)
+
         self.exposure_slider = QSlider(Qt.Orientation.Horizontal)
         self.exposure_slider.setTickInterval(5000)
         self.exposure_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
+
         self.exposure_label = QLabel()
+        # Keep the value close to the slider, aligned right
+        self.exposure_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        exposure_layout.addWidget(self.exposure_slider)
+        exposure_layout.addWidget(self.exposure_label)
     
     def create_controls_narrow(self):
         controls_narrow = QWidget()
         controls_narrow_layout = QVBoxLayout(controls_narrow)
         
         controls_narrow_layout.addWidget(self.setup_roi())
-        # Add more controls here as needed
+        # Experiment configuration controls (directory + name)
+        controls_narrow_layout.addWidget(self.setup_experiment_controls())
         return controls_narrow
     
     def create_controls_wide(self):
         controls_wide = QWidget()
         controls_wide_layout = QVBoxLayout(controls_wide)
+        # Ensure controls stack from the top (no vertical centering)
+        controls_wide_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         controls_wide_layout.addWidget(self.hist_display)
-        controls_wide_layout.addWidget(self.exposure_slider)
-        controls_wide_layout.addWidget(self.exposure_label)
+        # Add combined exposure slider + label widget
+        controls_wide_layout.addWidget(self.exposure_container)
 
         return controls_wide
             
@@ -159,6 +231,9 @@ class AppUI(QMainWindow):
         central_widget_layout.addWidget(self.image_container)
         central_widget_layout.addWidget(controls_narrow)
         central_widget_layout.addWidget(controls_wide)
+        # Ensure side control columns are aligned to the top
+        central_widget_layout.setAlignment(controls_narrow, Qt.AlignmentFlag.AlignTop)
+        central_widget_layout.setAlignment(controls_wide, Qt.AlignmentFlag.AlignTop)
         
         central_widget_layout.setStretch(0, 5) # Set Image to 50%
         central_widget_layout.setStretch(1, 2) # Set narrow to 20%
