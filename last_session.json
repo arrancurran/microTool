@@ -1,0 +1,16 @@
+{
+  "roi": {
+    "width": 208,
+    "height": 196,
+    "offset_x": 252,
+    "offset_y": 214
+  },
+  "exposure_us": 1462.0,
+  "experiment": {
+    "mode": "Frame rate mode",
+    "directory": "/Users/arrancurran/Documents/radboud/software/dev/microTool/_data",
+    "name": "test",
+    "framerate_hz": "62.0",
+    "frames": "100"
+  }
+}

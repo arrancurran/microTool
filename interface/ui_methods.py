@@ -174,8 +174,15 @@ class UIMethods(QObject):
             return
 
         if self.experiment.start_experiment(base_path, frames, mode, target_fps):
-            # Read back the effective framerate for user feedback
-            effective_fps = self.experiment.effective_framerate
+            # For free-run mode, report the camera's effective
+            # framerate. For frame-rate mode, report the user-set
+            # target fps (software pacing) so the popup matches what
+            # the user requested rather than the hardware max.
+            if mode == "Frame rate mode" and target_fps is not None:
+                effective_fps = target_fps
+            else:
+                effective_fps = self.experiment.effective_framerate
+
             if effective_fps is not None:
                 msg = f"Experiment started: {frames} frames @ {effective_fps:.1f} Hz"
             else:

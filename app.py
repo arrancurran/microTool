@@ -12,6 +12,7 @@ from acquisitions.live_stream_handler import LiveStreamHandler
 from interface.status_bar.update_notif import set_main_window
 
 from utils import PopupNotifManager
+from utils.last_session import save_last_session, load_last_session
 
 # Configure global logging
 def setup_logging():
@@ -51,6 +52,14 @@ class microTool():
         """Set the main window"""
         set_main_window(self.window)
 
+        # Restore last-session settings (ROI, exposure, acquisition
+        # configuration) now that the UI and camera controls are
+        # initialised.
+        try:
+            load_last_session(self.window, self.camera_control)
+        except Exception as e:
+            logging.error(f"Error loading last session settings: {e}")
+
         # Create a timer to update UI at a reasonable rate
         self.ui_update_timer = QTimer()
         self.ui_update_timer.timeout.connect(self.ui_methods.update_img_display)
@@ -73,6 +82,12 @@ class microTool():
         
     def cleanup(self, event):
         try:
+            # Persist front-panel settings for the next run
+            try:
+                save_last_session(self.window, self.camera_control)
+            except Exception as e:
+                logging.error(f"Error saving last session settings: {e}")
+
             if hasattr(self, 'stream_camera'):
                 self.stream_camera.cleanup()
             if hasattr(self, 'camera_sequences'):

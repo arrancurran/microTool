@@ -21,15 +21,19 @@ class ImgHistDisplay:
             image_data = cv2.cvtColor(image_data, cv2.COLOR_RGB2GRAY)
 
         hist, bins = np.histogram(image_data.flatten(), bins=256, range=[0, 256])
+        # Plot counts on a logarithmic scale so that both low and
+        # high-occupancy bins are visible. We add 1 to avoid log(0).
+        hist = hist.astype(float)
+        hist_log = np.log10(hist + 1.0)
         self.plot_widget.clear()
 
         x = bins[:-1]
-        line_plot = pg.PlotCurveItem(x, hist, pen=pg.mkPen(color='#97c1ff', width=2))
+        line_plot = pg.PlotCurveItem(x, hist_log, pen=pg.mkPen(color='#97c1ff', width=2))
         self.plot_widget.addItem(line_plot)
 
         fill_plot = pg.FillBetweenItem(
-            pg.PlotDataItem(x, hist),
-            pg.PlotDataItem(x, np.zeros_like(hist)),
+            pg.PlotDataItem(x, hist_log),
+            pg.PlotDataItem(x, np.zeros_like(hist_log)),
             brush=pg.mkBrush(color=(151, 193, 255, 100))
         )
         self.plot_widget.addItem(fill_plot)
