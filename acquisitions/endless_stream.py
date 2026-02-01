@@ -4,12 +4,12 @@ import qtawesome as qta
 
 from .hdf5_handler import HDF5Handler
 from .data_queue_handler import ImgDataQueueHandler
+from .metadata_builder import build_metadata
 from interface.status_bar.update_notif import update_notif
-from utils import get_computer_name
 
 logger = logging.getLogger(__name__)
 
-class AcquireStream:
+class EndlessStream:
     
     def __init__(self, stream_camera, window):
         self.stream_camera = stream_camera
@@ -22,6 +22,10 @@ class AcquireStream:
         self.camera_aq__thread = None
         self.is_recording = False
         self.was_streaming = False
+        self.metadata_written = False
+        self.roi_width = None
+        self.roi_height = None
+        self.start_time = None
         
         # Connect stop signal to window
         self.window.start_recording.triggered.connect(self.stop_recording)
@@ -38,31 +42,37 @@ class AcquireStream:
                 self.window.stop_stream.trigger()
             
             # Get ROI dimensions
-            roi_width = self.camera_control.call_camera_command("width", "get")
-            roi_height = self.camera_control.call_camera_command("height", "get")
+            self.roi_width = self.camera_control.call_camera_command("width", "get")
+            self.roi_height = self.camera_control.call_camera_command("height", "get")
             
             # Initialize queue with ROI dimensions
-            self.queue = ImgDataQueueHandler(self.window, roi_width, roi_height)
+            self.queue = ImgDataQueueHandler(self.window, self.roi_width, self.roi_height)
             self.queue.reset_stats()
             
-            # Initialize recording
-            metadata = {
-                'Computer Name': get_computer_name(),
-                'Acquisition Type': 'Live Stream',
-                # TODO: Add software version dynamically
-                'Software Name': 'microTool',
-                'Software Version': 'v1.0',
-                'Camera Model': self.camera_control.camera.get_device_name().decode('utf-8'),
-                'Start Time': datetime.now().isoformat(),
-                'Exposure': self.camera_control.call_camera_command("exposure", "get"),
-                'ROI Width': roi_width,
-                'ROI Height': roi_height,
-                'ROI Offset X': self.camera_control.call_camera_command("offset_x", "get"),
-                'ROI Offset Y': self.camera_control.call_camera_command("offset_y", "get")
-            }
-            
-            if not self.h5_handler.init_h5File(metadata, path):
+            # Mark stream start time
+            self.start_time = datetime.now()
+
+            # Initialise HDF5 file. We write an initial metadata
+            # block now, and will update it again once recording has
+            # finished so that fields like Acquired Frames are
+            # correct.
+            if not self.h5_handler.init_h5File(path=path):
                 raise Exception("Failed to create HDF5 file")
+
+            initial_metadata = build_metadata(
+                acquisition_type="Stream",
+                window=self.window,
+                camera_control=self.camera_control,
+                roi_width=self.roi_width,
+                roi_height=self.roi_height,
+                start_time=self.start_time,
+                requested_frames=None,
+                acquired_frames=None,
+                mode=None,
+                requested_framerate=None,
+                effective_framerate=None,
+            )
+            self.h5_handler.set_metadata(initial_metadata)
             
             # Start recording thread and saving
             self.is_recording = True
@@ -94,6 +104,10 @@ class AcquireStream:
         
         if self.camera_aq__thread:
             self.camera_aq__thread.join(timeout=5.0)  # Wait up to 5 seconds for recording to stop
+
+        # Finalise metadata based on what was actually acquired
+        if self.queue is not None:
+            self._finalise_metadata()
         
         # Start cleanup in background
         cleanup_thread = threading.Thread(
@@ -118,6 +132,9 @@ class AcquireStream:
                         update_notif("Queue Full - Stopping Stream", duration=2000)
                         self.is_recording = False
                         self.camera_control.stop_camera()
+
+                        # Finalise metadata before cleanup
+                        self._finalise_metadata()
                         
                         # Start cleanup in background
                         cleanup_thread = threading.Thread(
@@ -144,3 +161,37 @@ class AcquireStream:
         self.h5_handler = None
         self.window = None
         self.camera_control = None
+        self.metadata_written = False
+        self.roi_width = None
+        self.roi_height = None
+        self.start_time = None
+
+    def _finalise_metadata(self):
+        """Build and write metadata once recording has finished."""
+
+        if self.metadata_written or not self.h5_handler or not self.h5_handler.create_hdf5:
+            return
+
+        acquired_frames = None
+        if self.queue is not None:
+            try:
+                acquired_frames = self.queue.frames_recorded
+            except Exception:
+                acquired_frames = None
+
+        metadata = build_metadata(
+            acquisition_type="Stream",
+            window=self.window,
+            camera_control=self.camera_control,
+            roi_width=self.roi_width,
+            roi_height=self.roi_height,
+            start_time=self.start_time,
+            requested_frames=None,
+            acquired_frames=acquired_frames,
+            mode=None,
+            requested_framerate=None,
+            effective_framerate=None,
+        )
+
+        self.h5_handler.set_metadata(metadata)
+        self.metadata_written = True

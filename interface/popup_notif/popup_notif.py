@@ -11,6 +11,7 @@ class PopupNotif(QWidget):
         self.label.setAutoFillBackground(True)
         self.label.setFrameShape(QLabel.Shape.Box)
         self.label.setLineWidth(1)
+        self.label.setStyleSheet("padding: 10px;")
         # self.label.setFixedSize(300, 100)
         # Align the text in the centre of the FixedSize label
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -18,7 +19,6 @@ class PopupNotif(QWidget):
         # Button if requested
         if button:
             self.button = QPushButton(button, self)
-            
             
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self.label, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -28,13 +28,13 @@ class PopupNotif(QWidget):
         self.setMinimumWidth(self.parentWidget().width() if self.parentWidget() else self.screen().availableGeometry().width())
         self.setLayout(self.layout)
         
-        # Timer to close the popup after 2 seconds of inactivity.
+        # Timer to close the popup after 3 seconds of inactivity.
         self.close_timer = QTimer(self)
         self.close_timer.setSingleShot(True)
         self.close_timer.timeout.connect(self.close)
-        self.close_timer.start(2000)
+        self.close_timer.start(3000)
 
     def update_popup_notif(self, message):
         self.label.setText(message)
         # Reset the timer on every update.
-        self.close_timer.start(2000)
+        self.close_timer.start(3000)

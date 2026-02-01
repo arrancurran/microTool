@@ -116,19 +116,21 @@ class FramerateControl(NumericCameraControl):
         super().handle_value_change(float(clamped_value))  # Convert back to float for camera
         
     def _apply_change(self):
-        """Apply the pending framerate change to the camera."""
+        """Apply the pending framerate change.
+
+        The connected hardware does not support setting a dedicated frame
+        rate timing mode, so we avoid sending any "set framerate" command
+        to the camera. The slider and label still reflect the desired
+        framerate and can be used by software-level pacing logic.
+        """
         if self.pending_value is not None:
-            logger.debug(f"Applying framerate value: {self.pending_value}")  # Debug print
+            # Just refresh the label and status bar based on the desired
+            # value; do not attempt to change the camera timing.
             try:
-                self.camera_control.call_camera_command(self.command_name, "set", self.pending_value)
-                logger.debug("Successfully applied framerate value")  # Debug print
                 self._format_and_update_label(self.pending_value)
-                
-                # Update status bar
                 if hasattr(self.window, 'ui_methods') and hasattr(self.window.ui_methods, 'status_bar_manager'):
                     self.window.ui_methods.status_bar_manager.update_on_control_change(self.command_name)
-                
-                self.pending_value = None
             except Exception as e:
-                logger.error(f"Error applying framerate value: {str(e)}")
-                self.pending_value = None 
+                logger.error(f"Error updating framerate display: {str(e)}")
+            finally:
+                self.pending_value = None

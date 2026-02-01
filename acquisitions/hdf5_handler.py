@@ -21,7 +21,10 @@ class HDF5Handler:
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.create_hdf5 = h5py.File(f"{path}_{timestamp}.h5", 'w')
-            # Store metadata if provided
+            # Store metadata if provided. In most cases, metadata will
+            # be written after acquisition has finished via
+            # set_metadata(), but we keep this for backwards
+            # compatibility.
             if metadata:
                 self.create_hdf5.attrs.update(metadata)
             
@@ -31,6 +34,22 @@ class HDF5Handler:
             logger.error(f"Error initialising h5 file: {e}")
             self._cleanup()
             return False
+
+    def set_metadata(self, metadata: dict | None):
+        """Update HDF5 file attributes with the given metadata.
+
+        This can be called after acquisition has finished, before the
+        file is closed.
+        """
+
+        if not self.create_hdf5 or not metadata:
+            return
+
+        try:
+            self.create_hdf5.attrs.update(metadata)
+            self.create_hdf5.flush()
+        except Exception as e:
+            logger.error(f"Error updating HDF5 metadata: {e}")
     
     def init_saving_thread(self, queue):
         if self.is_saving:

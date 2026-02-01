@@ -1,13 +1,12 @@
 from PyQt6.QtCore import QObject
-from PyQt6.QtWidgets import QInputDialog
 import qtawesome as qta
 import logging
 
 from .camera_controls.control_manager import CameraControlManager
 from .status_bar.status_bar_manager import StatusBarManager
-from acquisitions.acquire_stream import AcquireStream
+from acquisitions.endless_stream import EndlessStream
 from acquisitions.snapshot import Snapshot
-from acquisitions.acquire_experiment import AcquireExperiment
+from acquisitions.simple_timeseries import SimpleTimeSeries
 from .ui_img_disp.draw_roi import DrawROI
 
 from .ui_img_disp.ui_display_methods import UIDisplayMethods
@@ -25,8 +24,8 @@ class UIMethods(QObject):
         self.stream_camera = stream_camera
         self.camera_control = self.stream_camera.camera_control
         self.snapshot = Snapshot(stream_camera, window)
-        self.record_stream = AcquireStream(stream_camera, window)
-        self.experiment = AcquireExperiment(stream_camera, window)
+        self.record_stream = EndlessStream(stream_camera, window)
+        self.experiment = SimpleTimeSeries(stream_camera, window)
         self.draw_roi = DrawROI()
         self.popup_manager = PopupNotifManager(self.window)
         
@@ -50,6 +49,13 @@ class UIMethods(QObject):
         if hasattr(self.window, "experiment_framerate_edit"):
             self.window.experiment_framerate_edit.editingFinished.connect(
                 self.handle_experiment_framerate_change
+            )
+
+        # Track acquisition mode (free run vs frame rate mode)
+        self.acquisition_mode = "Free run (max speed)"
+        if hasattr(self.window, "acquisition_mode_combo"):
+            self.window.acquisition_mode_combo.currentIndexChanged.connect(
+                self.handle_acquisition_mode_change
             )
         
         """Set the original image size"""
@@ -110,21 +116,26 @@ class UIMethods(QObject):
 
     def handle_experiment(self):
         """Configure and start a fixed-frame experiment acquisition.
-
-        Uses the current camera framerate (which is itself clamped to the
-        camera's max) and prompts the user only for the number of frames
-        and output path.
         """
+        # Get number of frames from the Acquisition Settings field
+        frames_edit = getattr(self.window, "experiment_frames_edit", None)
+        if frames_edit is None:
+            self.popup_manager.show_popup_notif("Frames field not found in UI")
+            return
 
-        # Request number of frames
-        frames, ok = QInputDialog.getInt(
-            self.window,
-            "Experiment Setup",
-            "Number of frames:",
-            value=100,
-            min=1,
-        )
-        if not ok:
+        text = frames_edit.text().strip()
+        if not text:
+            self.popup_manager.show_popup_notif("Enter the number of frames to acquire")
+            return
+
+        try:
+            frames = int(text)
+        except ValueError:
+            self.popup_manager.show_popup_notif("Enter a valid integer number of frames")
+            return
+
+        if frames <= 0:
+            self.popup_manager.show_popup_notif("Number of frames must be positive")
             return
 
         base_path = self._get_experiment_base_path()
@@ -132,7 +143,25 @@ class UIMethods(QObject):
             self.popup_manager.show_popup_notif("Set experiment directory and name first")
             return
 
-        if self.experiment.start_experiment(base_path, frames):
+        # Determine acquisition mode and target frame rate
+        mode = getattr(self, "acquisition_mode", "Free run (max speed)")
+
+        target_fps = None
+        edit = getattr(self.window, "experiment_framerate_edit", None)
+        if edit is not None:
+            text = edit.text().strip()
+            if text:
+                try:
+                    target_fps = float(text)
+                except ValueError:
+                    self.popup_manager.show_popup_notif("Enter a valid numeric frame rate")
+                    return
+
+        if mode == "Frame rate mode" and (target_fps is None or target_fps <= 0):
+            self.popup_manager.show_popup_notif("Set a positive frame rate for Frame rate mode")
+            return
+
+        if self.experiment.start_experiment(base_path, frames, mode, target_fps):
             # Read back the effective framerate for user feedback
             effective_fps = self.experiment.effective_framerate
             if effective_fps is not None:
@@ -142,6 +171,13 @@ class UIMethods(QObject):
             self.popup_manager.show_popup_notif(msg)
         else:
             self.popup_manager.show_popup_notif("Failed to start experiment")
+
+    def handle_acquisition_mode_change(self, index: int):
+        """Update the stored acquisition mode when the user changes it."""
+        combo = getattr(self.window, "acquisition_mode_combo", None)
+        if combo is None:
+            return
+        self.acquisition_mode = combo.currentText()
 
     def handle_experiment_framerate_change(self):
         """Handle changes to the experiment frame rate field.
@@ -192,11 +228,10 @@ class UIMethods(QObject):
             except Exception as e:
                 logger.error(f"Error updating framerate slider from experiment field: {e}")
 
-        # Fallback: set camera framerate directly
-        try:
-            self.camera_control.call_camera_command("framerate", "set", target_fps)
-        except Exception as e:
-            logger.error(f"Error setting camera framerate from experiment field: {e}")
+        # We intentionally avoid setting the hardware framerate here,
+        # since the connected camera does not support a frame-rate
+        # timing mode. The slider value can still be used by higher-
+        # level acquisition logic (e.g. for software pacing).
 
     def _get_experiment_base_path(self):
         """Combine experiment directory and name from the UI.

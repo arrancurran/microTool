@@ -4,7 +4,7 @@ import json, os
 import pyqtgraph as pg  
 import qtawesome as qta
 
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout, QLineEdit, QFileDialog, QGroupBox
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout, QLineEdit, QFileDialog, QGroupBox, QComboBox
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
@@ -58,13 +58,14 @@ class AppUI(QMainWindow):
         return image_container
     
     def setup_roi(self):
-        roi_group_widget = QWidget()
-        roi_grid_layout = QGridLayout(roi_group_widget)
+        # Group box to visually contain ROI controls
+        roi_group_widget = QGroupBox("Region of Interest Settings")
+        roi_grid_layout = QGridLayout()
         roi_grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         spinbox_width = self.ui_scaffolding['spinbox']['width']
         
-        for count, (key, value)  in enumerate(self.ui_scaffolding['roi'].items()):
+        for count, (key, value) in enumerate(self.ui_scaffolding['roi'].items()):
             roi_spinbox = QSpinBox()
             roi_label = QLabel(value.get("label", "No Label"))
 
@@ -97,9 +98,8 @@ class AppUI(QMainWindow):
         button_layout.addWidget(self.reset_roi_button)
         
         roi_grid_layout.addWidget(button_container, 2, 0, 1, 2)
-        
-        roi_group_widget.setLayout(roi_grid_layout)
 
+        roi_group_widget.setLayout(roi_grid_layout)
         return roi_group_widget
     
     def setup_histogram(self):
@@ -108,13 +108,28 @@ class AppUI(QMainWindow):
         self.histogram_plot = ImgHistDisplay(self.hist_display)
 
     def setup_experiment_controls(self):
-        """Create controls for experiment directory, name, and frame rate.
+        """Create controls for experiment directory, name, mode and frame rate.
 
         Displayed inside a titled group box "Acquisition Settings".
         """
         group = QGroupBox("Acquisition Settings")
         layout = QVBoxLayout(group)
         layout.setContentsMargins(8, 8, 8, 8)
+
+        # Acquisition mode row
+        mode_row = QWidget()
+        mode_layout = QHBoxLayout(mode_row)
+        mode_layout.setContentsMargins(0, 0, 0, 0)
+
+        mode_label = QLabel("Mode:")
+        self.acquisition_mode_combo = QComboBox()
+        self.acquisition_mode_combo.addItems([
+            "Free run (max speed)",
+            "Frame rate mode",
+        ])
+
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.acquisition_mode_combo)
 
         # Directory row
         dir_row = QWidget()
@@ -151,9 +166,23 @@ class AppUI(QMainWindow):
         fr_layout.addWidget(fr_label)
         fr_layout.addWidget(self.experiment_framerate_edit)
 
+        # Experiment frames row (how many frames to acquire)
+        frames_row = QWidget()
+        frames_layout = QHBoxLayout(frames_row)
+        frames_layout.setContentsMargins(0, 0, 0, 0)
+
+        frames_label = QLabel("Frames to acquire:")
+        self.experiment_frames_edit = QLineEdit()
+        self.experiment_frames_edit.setText("100")
+
+        frames_layout.addWidget(frames_label)
+        frames_layout.addWidget(self.experiment_frames_edit)
+
+        layout.addWidget(mode_row)
         layout.addWidget(dir_row)
         layout.addWidget(name_row)
         layout.addWidget(fr_row)
+        layout.addWidget(frames_row)
 
         # Connect browse button to QFileDialog
         def _browse_dir():
