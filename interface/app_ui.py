@@ -178,11 +178,17 @@ class AppUI(QMainWindow):
         frames_layout.addWidget(frames_label)
         frames_layout.addWidget(self.experiment_frames_edit)
 
+        # Estimated acquisition info (time and HDF5 size)
+        self.experiment_est_time_label = QLabel("Estimated time: -")
+        self.experiment_est_size_label = QLabel("Estimated size: -")
+
         layout.addWidget(mode_row)
         layout.addWidget(dir_row)
         layout.addWidget(name_row)
         layout.addWidget(fr_row)
         layout.addWidget(frames_row)
+        layout.addWidget(self.experiment_est_time_label)
+        layout.addWidget(self.experiment_est_size_label)
 
         # Connect browse button to QFileDialog
         def _browse_dir():

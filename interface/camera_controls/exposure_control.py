@@ -75,6 +75,18 @@ class ExposureControl(NumericCameraControl):
                 self._format_and_update_label(int(round(self.pending_value)))
                 # Update status bar
                 self.window.image_container.ui_methods.status_bar_manager.update_on_control_change(self.command_name)
+
+                # Exposure changes affect the camera's maximum achievable
+                # frame rate. In free-run acquisition mode, the estimated
+                # experiment duration is based on this max frame rate, so
+                # we also refresh the acquisition estimates here.
+                try:
+                    self.window.image_container.ui_methods.update_acquisition_estimates()
+                except Exception:
+                    # If the UI methods object or estimate function is not
+                    # available for any reason, we silently ignore it to
+                    # avoid breaking exposure control.
+                    pass
                 
                 self.pending_value = None
             except Exception as e:

@@ -45,10 +45,22 @@ class UIMethods(QObject):
         """Connect the Reset ROI button"""
         self.window.reset_roi_button.clicked.connect(self.image_display.handle_reset_roi)
 
+        # Update acquisition estimates when ROI spinboxes change (if present)
+        for name in ("roi_width", "roi_height"):
+            spin = getattr(self.window, name, None)
+            if spin is not None:
+                spin.valueChanged.connect(self.update_acquisition_estimates)
+
         # Connect experiment frame rate field, if present
         if hasattr(self.window, "experiment_framerate_edit"):
             self.window.experiment_framerate_edit.editingFinished.connect(
                 self.handle_experiment_framerate_change
+            )
+
+        # Connect experiment frames field, if present
+        if hasattr(self.window, "experiment_frames_edit"):
+            self.window.experiment_frames_edit.editingFinished.connect(
+                self.update_acquisition_estimates
             )
 
         # Track acquisition mode (free run vs frame rate mode)
@@ -178,6 +190,7 @@ class UIMethods(QObject):
         if combo is None:
             return
         self.acquisition_mode = combo.currentText()
+        self.update_acquisition_estimates()
 
     def handle_experiment_framerate_change(self):
         """Handle changes to the experiment frame rate field.
@@ -233,6 +246,10 @@ class UIMethods(QObject):
         # timing mode. The slider value can still be used by higher-
         # level acquisition logic (e.g. for software pacing).
 
+        # Update acquisition estimates using the new (possibly clamped)
+        # value.
+        self.update_acquisition_estimates()
+
     def _get_experiment_base_path(self):
         """Combine experiment directory and name from the UI.
 
@@ -254,6 +271,107 @@ class UIMethods(QObject):
         # Do not append extension here; individual acquisitions add it.
         from os import path
         return path.join(dir_text, name_text)
+
+    def update_acquisition_estimates(self):
+        """Update estimated acquisition time and file size in the UI.
+
+        - Time is based on number of frames and effective frame rate:
+          * Free run: use camera framerate_max.
+          * Frame rate mode: use user-defined frame rate.
+        - Size is based on ROI (width x height) and number of frames.
+        """
+
+        # Obtain ROI dimensions from UI spinboxes if available
+        roi_width = None
+        roi_height = None
+
+        width_spin = getattr(self.window, "roi_width", None)
+        height_spin = getattr(self.window, "roi_height", None)
+
+        if width_spin is not None and height_spin is not None:
+            roi_width = width_spin.value()
+            roi_height = height_spin.value()
+
+        # Fallback: try camera for ROI dimensions
+        if roi_width is None or roi_height is None:
+            try:
+                roi_width = int(self.camera_control.call_camera_command("width", "get"))
+                roi_height = int(self.camera_control.call_camera_command("height", "get"))
+            except Exception:
+                roi_width = None
+                roi_height = None
+
+        # Number of frames
+        frames = None
+        frames_edit = getattr(self.window, "experiment_frames_edit", None)
+        if frames_edit is not None:
+            text = frames_edit.text().strip()
+            if text:
+                try:
+                    value = int(text)
+                    if value > 0:
+                        frames = value
+                except ValueError:
+                    pass
+
+        # Determine effective frame rate for estimate
+        fps = None
+        mode = getattr(self, "acquisition_mode", "Free run (max speed)")
+        if mode == "Frame rate mode":
+            edit = getattr(self.window, "experiment_framerate_edit", None)
+            if edit is not None:
+                text = edit.text().strip()
+                if text:
+                    try:
+                        value = float(text)
+                        if value > 0:
+                            fps = value
+                    except ValueError:
+                        pass
+        else:
+            # Free run: use camera's maximum framerate if available
+            try:
+                value = self.camera_control.call_camera_command("framerate_max", "get")
+                if value is not None and float(value) > 0:
+                    fps = float(value)
+            except Exception:
+                fps = None
+
+        # Compute estimated time
+        time_str = "-"
+        if frames is not None and fps is not None and fps > 0:
+            total_seconds = frames / fps
+            if total_seconds < 60:
+                time_str = f"{total_seconds:.1f} s"
+            else:
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
+                if hours > 0:
+                    time_str = f"{hours} h {minutes} min"
+                else:
+                    time_str = f"{minutes} min"
+
+        # Compute estimated file size based on ROI and frames
+        size_str = "-"
+        if roi_width is not None and roi_height is not None and frames is not None:
+            total_bytes = roi_width * roi_height * frames
+            if total_bytes >= 1024 ** 3:
+                size_str = f"{total_bytes / (1024 ** 3):.2f} GB"
+            elif total_bytes >= 1024 ** 2:
+                size_str = f"{total_bytes / (1024 ** 2):.2f} MB"
+            elif total_bytes >= 1024:
+                size_str = f"{total_bytes / 1024:.2f} KB"
+            else:
+                size_str = f"{total_bytes} B"
+
+        # Update labels in Acquisition Settings, if present
+        time_label = getattr(self.window, "experiment_est_time_label", None)
+        size_label = getattr(self.window, "experiment_est_size_label", None)
+
+        if time_label is not None:
+            time_label.setText(f"Estimated time: {time_str}")
+        if size_label is not None:
+            size_label.setText(f"Estimated size: {size_str}")
     
     def cleanup(self):
         
