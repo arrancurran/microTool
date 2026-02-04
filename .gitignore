@@ -1,22 +1,10 @@
-*.tiff
-
 .cursorrules
-
 .cursorignore
-
 .cursorignorerules
 
-*.h5
-
-*.hdf5
-
-*.hdf
-
-*.hdf5
-
 _tests
-
 _data
 
+last_session.json
 flow.md
 improvements.md
