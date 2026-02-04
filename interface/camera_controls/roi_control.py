@@ -81,11 +81,25 @@ class ROIControl(NumericCameraControl):
             logger.debug(f"{command} set to {value}")
             
             if command in ['width', 'height']:
-                # Get current dimension and max dimension
-                max_value  = self.camera_control.call_camera_command(f"{command}_max", "get")
-                
-                # Calculate and set new max offset
+                # Use the cached absolute max sensor dimensions so that
+                # the available offset grows as the ROI shrinks.
+                max_value = None
+                if self.max_dimensions is not None:
+                    max_value = self.max_dimensions.get(command)
+
+                # Fallback to querying the camera if for some reason we
+                # don't have a cached value (e.g. setup failed/changed).
+                if max_value is None:
+                    max_value = self.camera_control.call_camera_command(f"{command}_max", "get")
+
+                if max_value is None:
+                    logger.error(f"Could not determine max value for {command} when updating ROI offsets")
+                    return
+
+                # Calculate and set new max offset; never allow negative.
                 max_offset = max_value - value
+                if max_offset < 0:
+                    max_offset = 0
                 
                 # Update the appropriate offset spinbox
                 if command == 'width':
