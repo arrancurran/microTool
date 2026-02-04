@@ -1,4 +1,5 @@
 import sys, os, logging
+from pathlib import Path
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
@@ -16,16 +17,17 @@ from utils.last_session import save_last_session, load_last_session
 
 # Configure global logging
 def setup_logging():
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    base_dir = Path(__file__).resolve().parent
+    logs_dir = base_dir / "logs"
+    logs_dir.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = f'logs/microTool_{timestamp}.log'
+    log_file = logs_dir / f"microTool_{timestamp}.log"
 
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(levelname)s - %(threadName)s - %(filename)s - %(name)s:%(funcName)s() - %(message)s',
         handlers=[
-            logging.FileHandler(log_file),
+            logging.FileHandler(str(log_file)),
             logging.StreamHandler()  # Also log to console
         ]
     )

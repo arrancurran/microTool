@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 from PyQt6.QtWidgets import QApplication, QWidget, QFileDialog, QInputDialog, QMessageBox
 
 def popup_request_path():
@@ -22,9 +23,10 @@ def popup_request_path():
         QMessageBox.information(widget, "Information", "No filename provided.")
         return
 
-    # Combine the directory and filename into a full path
-    snapshot_path = f"{directory}/{filename}"
-    return snapshot_path
+    # Combine the directory and filename into a full path in a
+    # cross-platform way.
+    snapshot_path = Path(directory) / filename
+    return str(snapshot_path)
 
 # Example usage - this can be connected to your snapshot button's clicked signal.
 if __name__ == "__main__":

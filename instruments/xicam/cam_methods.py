@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from ximea import xiapi
 from queue import Queue
 from threading import Lock, Thread
@@ -25,8 +26,10 @@ class CameraControl:
         self.running = True
                 
     def _load_commands_from_json(self):
-               
-        with open('instruments/xicam/commands.json', 'r') as file:
+        # Load command definitions from the JSON file located
+        # alongside this module, in a cross-platform way.
+        commands_path = Path(__file__).resolve().parent / "commands.json"
+        with commands_path.open('r', encoding='utf-8') as file:
             commands = json.load(file)
         self.set_commands = {cmd['cmd']: cmd for cmd in commands['set']}
         self.get_commands = {cmd['cmd']: cmd for cmd in commands['get']}
