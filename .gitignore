@@ -1,3 +1,4 @@
+__pycache__
 .cursorrules
 .cursorignore
 .cursorignorerules
@@ -8,3 +9,4 @@ _data
 last_session.json
 flow.md
 improvements.md
+*.log
