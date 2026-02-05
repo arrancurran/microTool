@@ -160,12 +160,60 @@ class AppUI(QMainWindow):
             # send_traps knows how to map the generic dicts into the
             # UdpHoloMessage structure.
             send_traps(self.optical_traps)
+            # Also update camera spot markers, if the main UI has
+            # access to UIMethods and a camera image size.
+            self._update_spot_markers_on_camera()
         except Exception as e:
             # Log errors but avoid crashing the UI if the SLM is
             # unreachable.
             import logging
 
             logging.getLogger(__name__).error(f"Error sending traps to SLM: {e}")
+
+    def _update_spot_markers_on_camera(self):
+        """Project optical trap positions onto the camera image.
+
+        Uses a fixed scale of 12.18 pixels/µm and treats (x, y) = (0, 0)
+        as the centre of the camera image. +x is to the right; +y is up
+        (so image y is inverted).
+        """
+
+        # UIMethods is attached by app.py after construction.
+        ui_methods = getattr(self, "ui_methods", None)
+        if ui_methods is None:
+            return
+
+        if not hasattr(self, "optical_traps") or not self.optical_traps:
+            ui_methods.set_spot_positions([])
+            return
+
+        # Get the original camera image size from the display helper.
+        image_display = getattr(ui_methods, "image_display", None)
+        if image_display is None or image_display.original_image_size is None:
+            # No image yet; nothing to draw.
+            return
+
+        width, height = image_display.original_image_size
+        cx = width / 2.0
+        cy = height / 2.0
+
+        px_per_um = 12.18
+
+        spots_px = []
+        for t in self.optical_traps:
+            try:
+                x_um = float(t.get("x", 0.0))
+                y_um = float(t.get("y", 0.0))
+            except (TypeError, ValueError):
+                continue
+
+            x_px = cx + x_um * px_per_um
+            # Invert y so +y in trap space is upwards on the image.
+            y_px = cy - y_um * px_per_um
+
+            spots_px.append((x_px, y_px))
+
+        ui_methods.set_spot_positions(spots_px)
     
     def load_ui_scaffolding(self, file_path):
         with open(os.path.join('interface', file_path), 'r') as f:

@@ -1,4 +1,4 @@
-from PyQt6.QtGui import QImage, QPixmap, QPainter
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QPen, QColor
 from PyQt6.QtCore import Qt
 from .draw_roi import DrawROI
 import logging, time
@@ -20,6 +20,10 @@ class UIDisplayMethods:
         self._cached_image_shape = None
         self.status_bar_manager = status_bar_manager
         self.popup_manager = PopupNotifManager(self.window)
+        # Spot markers (in image coordinates, list of (x, y))
+        self.spot_positions = []
+        self.spot_pen = QPen(QColor(255, 0, 0))
+        self.spot_pen.setWidth(2)
     
     def update_img_display(self):
 
@@ -69,12 +73,53 @@ class UIDisplayMethods:
             
             # Draw the ROI if any
             self.draw_roi.draw_rectangle(painter)
+            # Draw any spot markers
+            self._draw_spot_markers(painter)
             painter.end()
             
             self.window.image_container.setPixmap(final_image)
             self.original_image_size = (width, height)
 
             self.window.histogram_plot.update(np_image_data)
+
+    def set_spot_positions(self, spots):
+        """Update the list of spot positions (image coordinates) to draw.
+
+        Parameters
+        ----------
+        spots : iterable[tuple[int, int]] | None
+            Spot coordinates in camera image pixels (x, y).
+        """
+
+        self.spot_positions = list(spots) if spots is not None else []
+        # Trigger a repaint so markers appear/disappear immediately
+        self.window.image_container.update()
+
+    def _draw_spot_markers(self, painter):
+        """Draw crosshair markers for each spot using ROI scaling/offset."""
+        if not self.spot_positions:
+            return
+
+        painter.setPen(self.spot_pen)
+
+        sx = self.draw_roi.scale_factor_x
+        sy = self.draw_roi.scale_factor_y
+        ox = self.draw_roi.offset_x
+        oy = self.draw_roi.offset_y
+
+        size = 4  # half-size of crosshair arms in widget pixels
+
+        for x, y in self.spot_positions:
+            # x, y are in image coordinates (pixels)
+            try:
+                wx = int(x * sx + ox)
+                wy = int(y * sy + oy)
+            except TypeError:
+                continue
+
+            # Simple crosshair
+            painter.drawLine(wx - size, wy, wx + size, wy)
+            painter.drawLine(wx, wy - size, wx, wy + size)
 
     def handle_apply_roi(self):
 
@@ -171,4 +216,6 @@ class UIDisplayMethods:
         self.draw_roi.mouseReleaseEvent(event, self.image_container)
 
     def handle_paint(self, painter):
+        # Draw ROI and any spot markers as an overlay
         self.draw_roi.draw_rectangle(painter)
+        self._draw_spot_markers(painter)

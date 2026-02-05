@@ -92,6 +92,13 @@ class UIMethods(QObject):
 
     def handle_paint(self, painter):
         self.image_display.handle_paint(painter)
+
+    def set_spot_positions(self, spots):
+        """Public helper to mark spot positions on the camera UI.
+
+        `spots` should be an iterable of (x, y) in camera image pixels.
+        """
+        self.image_display.set_spot_positions(spots)
         
     def handle_snapshot(self):
         base_path = self._get_experiment_base_path()

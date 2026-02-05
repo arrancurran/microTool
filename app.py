@@ -47,6 +47,9 @@ class microTool():
        
         """UI Methods"""
         self.ui_methods = UIMethods(self.window, self.stream_camera)
+        # Expose ui_methods on the window so AppUI helpers can
+        # access it (e.g. to update spot markers on the camera view).
+        self.window.ui_methods = self.ui_methods
         
         """Connect the UI methods to the image container"""
         self.window.image_container.ui_methods = self.ui_methods
