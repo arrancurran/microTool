@@ -82,9 +82,12 @@ class EndlessStream:
             # Start saving frames
             if not self.h5_handler.init_saving_thread(self.queue):
                 raise Exception("Failed to start saving thread")
-            
+
             self.camera_control.start_camera()
-            update_notif("Recording Live Stream")
+            # Use a persistent status-bar message while recording;
+            # it will be replaced by the "saved to disk" message
+            # from HDF5Handler.cleanup() when acquisition finishes.
+            update_notif("Recording Live Stream", 0)
             return True
             
         except Exception as e:

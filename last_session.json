@@ -5,12 +5,12 @@
     "offset_x": 0,
     "offset_y": 0
   },
-  "exposure_us": 4373.0,
+  "exposure_us": 15.0,
   "experiment": {
-    "mode": "Free run (max speed)",
+    "mode": "Frame rate mode",
     "directory": "/Users/arrancurran/Documents/radboud/software/dev/microTool/_data",
     "name": "test",
-    "framerate_hz": "62.0",
-    "frames": "100"
+    "framerate_hz": "10.0",
+    "frames": "200"
   }
 }

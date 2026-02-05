@@ -1,7 +1,8 @@
 import h5py, time, threading, logging
 import numpy as np
 from datetime import datetime
-from interface.status_bar.update_notif import update_notif
+from interface.status_bar.update_notif import update_notif, clear_notif
+
 
 logger = logging.getLogger(__name__)
 

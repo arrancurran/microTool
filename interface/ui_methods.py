@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QObject
 import qtawesome as qta
 import logging
+from datetime import datetime, timedelta
 
 from .camera_controls.control_manager import CameraControlManager
 from .status_bar.status_bar_manager import StatusBarManager
@@ -75,6 +76,10 @@ class UIMethods(QObject):
         
     def update_img_display(self):
         self.image_display.update_img_display()
+        # Keep the time-series toolbar button in sync with the
+        # acquisition state (so it returns to the start icon when
+        # a run finishes naturally).
+        self._sync_time_series_button()
 
     def handle_mouse_press(self, event):
         self.image_display.handle_mouse_press(event)
@@ -127,8 +132,41 @@ class UIMethods(QObject):
             self.popup_manager.show_popup_notif("Recording Stopped")
 
     def handle_experiment(self):
-        """Configure and start a fixed-frame experiment acquisition.
+        """Configure and start/stop a fixed-frame time-series acquisition.
+
+        When idle, clicking the toolbar button starts a new time
+        series. While a time series is running, clicking it again
+        requests a graceful stop and resets the button icon.
         """
+
+        action = getattr(self.window, "start_experiment", None)
+        if action is None:
+            self.popup_manager.show_popup_notif("Start Time Series action not found in UI")
+            return
+
+        # Initialise per-action state flag if needed
+        if not hasattr(action, "is_running"):
+            action.is_running = False
+
+        # If a time series is already running, treat this as a stop
+        # request and return early.
+        if action.is_running:
+            try:
+                self.experiment.stop_time_series()
+                action.is_running = False
+
+                # Restore the original start icon
+                try:
+                    start_icon = self.window.ui_scaffolding["toolbar"]["icons"]["Start Experiment"]["icon"]
+                    action.setIcon(qta.icon(start_icon))
+                except Exception as e:
+                    logger.error(f"Error restoring Start Experiment icon: {e}")
+
+                self.popup_manager.show_popup_notif("Time series stopped")
+            except Exception as e:
+                logger.error(f"Error stopping time series: {e}")
+                self.popup_manager.show_popup_notif("Failed to stop time series")
+            return
         # Get number of frames from the Acquisition Settings field
         frames_edit = getattr(self.window, "experiment_frames_edit", None)
         if frames_edit is None:
@@ -173,7 +211,7 @@ class UIMethods(QObject):
             self.popup_manager.show_popup_notif("Set a positive frame rate for Frame rate mode")
             return
 
-        if self.experiment.start_experiment(base_path, frames, mode, target_fps):
+        if self.experiment.start_time_series(base_path, frames, mode, target_fps):
             # For free-run mode, report the camera's effective
             # framerate. For frame-rate mode, report the user-set
             # target fps (software pacing) so the popup matches what
@@ -188,6 +226,17 @@ class UIMethods(QObject):
             else:
                 msg = f"Experiment started: {frames} frames"
             self.popup_manager.show_popup_notif(msg)
+
+            # Update toolbar button to a red "stop" icon while the
+            # time series is running.
+            try:
+                stop_icon = self.window.ui_scaffolding["toolbar"]["icons"]["Start Recording"]["Stop Recording"]["icon"]
+                icon_color = self.window.ui_scaffolding["toolbar"]["icons"]["Start Recording"]["Stop Recording"]["icon_color"]
+                action.setIcon(qta.icon(stop_icon, color=icon_color))
+            except Exception as e:
+                logger.error(f"Error setting Stop icon for time series: {e}")
+
+            action.is_running = True
         else:
             self.popup_manager.show_popup_notif("Failed to start experiment")
 
@@ -256,6 +305,30 @@ class UIMethods(QObject):
         # Update acquisition estimates using the new (possibly clamped)
         # value.
         self.update_acquisition_estimates()
+
+    def _sync_time_series_button(self):
+        """Ensure the Start Experiment button reflects acquisition state.
+
+        If the time series acquisition has finished (is_running is
+        False) but the toolbar action still thinks it is running, reset
+        the icon and flag. This handles the natural completion case
+        without requiring explicit callbacks from the worker thread.
+        """
+
+        action = getattr(self.window, "start_experiment", None)
+        if action is None:
+            return
+
+        running = getattr(self.experiment, "is_running", False)
+        ui_running = getattr(action, "is_running", False)
+
+        if (not running) and ui_running:
+            try:
+                start_icon = self.window.ui_scaffolding["toolbar"]["icons"]["Start Experiment"]["icon"]
+                action.setIcon(qta.icon(start_icon))
+            except Exception as e:
+                logger.error(f"Error syncing Start Experiment icon: {e}")
+            action.is_running = False
 
     def _get_experiment_base_path(self):
         """Combine experiment directory and name from the UI.
@@ -344,8 +417,9 @@ class UIMethods(QObject):
             except Exception:
                 fps = None
 
-        # Compute estimated time
+        # Compute estimated time and end time (ETA)
         time_str = "-"
+        eta_suffix = ""
         if frames is not None and fps is not None and fps > 0:
             total_seconds = frames / fps
             if total_seconds < 60:
@@ -357,6 +431,12 @@ class UIMethods(QObject):
                     time_str = f"{hours} h {minutes} min"
                 else:
                     time_str = f"{minutes} min"
+
+            try:
+                eta_time = datetime.now() + timedelta(seconds=total_seconds)
+                eta_suffix = f" (finishes ≈ {eta_time.strftime('%H:%M')})"
+            except Exception:
+                eta_suffix = ""
 
         # Compute estimated file size based on ROI and frames
         size_str = "-"
@@ -376,7 +456,7 @@ class UIMethods(QObject):
         size_label = getattr(self.window, "experiment_est_size_label", None)
 
         if time_label is not None:
-            time_label.setText(f"Estimated time: {time_str}")
+            time_label.setText(f"Estimated time: {time_str}{eta_suffix}")
         if size_label is not None:
             size_label.setText(f"Estimated size: {size_str}")
     
