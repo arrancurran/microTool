@@ -100,17 +100,27 @@ def build_payload_text(msg: UdpHoloMessage) -> str:
 
 
 def send_udp_text(host: str, port: int, payload: str) -> None:
-    """Send the given text payload via UDP to (host, port)."""
+    """Send the given text payload via UDP to (host, port).
+
+    We bind the local UDP socket to a specific port so that packets
+    appear to come from the same source port as the original LabVIEW
+    implementation, which some servers may rely on.
+    """
 
     data = payload.encode("utf-8")
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        # Bind to the configured local port so the source port matches
+        # the LabVIEW client behaviour.
+        sock.bind((SLM_LOCAL_HOST, SLM_LOCAL_PORT))
         sock.sendto(data, (host, port))
 
 
 # Default SLM connection parameters; adjust as needed or override when
 # calling from the UI code.
-SLM_HOST: str = "127.0.0.1"
-SLM_PORT: int = 5005
+SLM_HOST: str = "127.0.0.1"      # remote/server IP
+SLM_PORT: int = 61557            # remote/server port
+SLM_LOCAL_HOST: str = "127.0.0.1"  # local bind IP
+SLM_LOCAL_PORT: int = 61556         # local/source port to match LabVIEW
 
 
 # Reusable defaults for fields that are not yet controlled via the UI.
@@ -152,6 +162,11 @@ DEFAULT_BLAZING: Sequence[float] = [
 DEFAULT_ZERNIKE: Sequence[float] = [7.0, 0.0, -7.0] + [0.0] * 9
 DEFAULT_WINDOW_RECT: Tuple[int, int, int, int] = (2560, 0, 512, 512)
 
+# Scaling factors for spot coordinates before sending to the SLM
+X_SCALE: float = -1.84e-5
+Y_SCALE: float = 1.86e-5
+Z_SCALE: float = -1.631e-5
+
 
 def build_message_from_traps(traps: Iterable[Mapping[str, float]]) -> UdpHoloMessage:
     """Convert a collection of optical trap dicts into a UdpHoloMessage.
@@ -168,14 +183,22 @@ def build_message_from_traps(traps: Iterable[Mapping[str, float]]) -> UdpHoloMes
 
     for t in traps:
         intensity = float(t.get("intensity", 0.0))
+
+        # Raw UI / logical coordinates
         x = float(t.get("x", 0.0))
         y = float(t.get("y", 0.0))
         z = float(t.get("z", 0.0))
+
+        # Apply required scaling before sending to the SLM
+        x_s = x * X_SCALE
+        y_s = y * Y_SCALE
+        z_s = z * Z_SCALE
+
         vortex = float(t.get("vortex", 0.0))
         phase = float(t.get("phase", 0.0))
 
         # Example mapping: [x, y, z, intensity, vortex, phase, 0, 0, 1]
-        cols = (x, y, z, intensity, vortex, phase, 0.0, 0.0, 1.0)
+        cols = (x_s, y_s, z_s, intensity, vortex, phase, 0.0, 0.0, 1.0)
         spots.append(SpotRow(cols=cols))
         totalA += intensity
 
