@@ -27,6 +27,7 @@ from PyQt6.QtCore import Qt
 
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
+from instruments.SLM.udp_holo import send_traps
 
 # Inherit from QMainWindow so ui is our main window
 class AppUI(QMainWindow):
@@ -84,6 +85,9 @@ class AppUI(QMainWindow):
             return
         self.optical_traps[idx][param_key] = float(value)
 
+        # Push updated trap configuration to the SLM.
+        self._send_optical_traps_to_slm()
+
     def _on_optical_trap_changed(self, index):
         """Handle switching between spots in the selector."""
 
@@ -113,6 +117,9 @@ class AppUI(QMainWindow):
         self.optical_trap_selector.setCurrentIndex(spot_index - 1)
         self._apply_optical_trap_to_widgets(default_trap)
 
+        # Notify SLM of the new spot configuration.
+        self._send_optical_traps_to_slm()
+
     def _remove_optical_trap(self):
         """Remove the currently-selected spot (keeping at least one)."""
 
@@ -135,6 +142,30 @@ class AppUI(QMainWindow):
         if self.optical_trap_selector.count() > 0:
             new_index = min(idx, self.optical_trap_selector.count() - 1)
             self.optical_trap_selector.setCurrentIndex(new_index)
+
+        # Notify SLM after removing a spot.
+        self._send_optical_traps_to_slm()
+
+    def _send_optical_traps_to_slm(self):
+        """Send the current optical trap configuration to the SLM via UDP.
+
+        Safe to call whenever traps are added/removed or their
+        parameters are changed.
+        """
+
+        if not hasattr(self, "optical_traps"):
+            return
+
+        try:
+            # send_traps knows how to map the generic dicts into the
+            # UdpHoloMessage structure.
+            send_traps(self.optical_traps)
+        except Exception as e:
+            # Log errors but avoid crashing the UI if the SLM is
+            # unreachable.
+            import logging
+
+            logging.getLogger(__name__).error(f"Error sending traps to SLM: {e}")
     
     def load_ui_scaffolding(self, file_path):
         with open(os.path.join('interface', file_path), 'r') as f:
