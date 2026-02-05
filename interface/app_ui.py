@@ -4,7 +4,24 @@ import json, os
 import pyqtgraph as pg  
 import qtawesome as qta
 
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QSlider, QHBoxLayout, QSpinBox, QVBoxLayout, QToolBar, QStatusBar, QPushButton, QGridLayout, QLineEdit, QFileDialog, QGroupBox, QComboBox
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QLabel,
+    QWidget,
+    QSlider,
+    QHBoxLayout,
+    QSpinBox,
+    QVBoxLayout,
+    QToolBar,
+    QStatusBar,
+    QPushButton,
+    QGridLayout,
+    QLineEdit,
+    QFileDialog,
+    QGroupBox,
+    QComboBox,
+    QDoubleSpinBox,
+)
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
@@ -37,6 +54,87 @@ class AppUI(QMainWindow):
     # def apply_styles(self):
     #     with open(os.path.join('interface', "style.css"), "r") as f:
     #         self.setStyleSheet(f.read())
+
+    # ---- Optical trap helpers -------------------------------------------------
+
+    def _current_optical_trap_index(self):
+        if not hasattr(self, "optical_traps"):
+            return -1
+        return self.optical_trap_selector.currentIndex()
+
+    def _apply_optical_trap_to_widgets(self, trap):
+        """Populate parameter widgets from a trap dict."""
+
+        if trap is None:
+            return
+
+        # Guard against missing keys; fall back to widget's current value
+        for attr_name, param_key in self._optical_trap_param_map.items():
+            spin = getattr(self, attr_name)
+            value = trap.get(param_key, spin.value())
+            spin.blockSignals(True)
+            spin.setValue(float(value))
+            spin.blockSignals(False)
+
+    def _on_optical_trap_param_changed(self, param_key, value):
+        """Update the currently-selected trap dict when a parameter changes."""
+
+        idx = self._current_optical_trap_index()
+        if idx < 0 or idx >= len(self.optical_traps):
+            return
+        self.optical_traps[idx][param_key] = float(value)
+
+    def _on_optical_trap_changed(self, index):
+        """Handle switching between spots in the selector."""
+
+        if not hasattr(self, "optical_traps") or index < 0 or index >= len(self.optical_traps):
+            return
+        trap = self.optical_traps[index]
+        self._apply_optical_trap_to_widgets(trap)
+
+    def _add_optical_trap(self):
+        """Add a new spot with default parameters and select it."""
+
+        if not hasattr(self, "optical_traps"):
+            self.optical_traps = []
+
+        default_trap = {
+            "intensity": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "vortex": 0.0,
+            "phase": 0.0,
+        }
+        self.optical_traps.append(default_trap)
+
+        spot_index = len(self.optical_traps)
+        self.optical_trap_selector.addItem(f"Spot {spot_index}")
+        self.optical_trap_selector.setCurrentIndex(spot_index - 1)
+        self._apply_optical_trap_to_widgets(default_trap)
+
+    def _remove_optical_trap(self):
+        """Remove the currently-selected spot (keeping at least one)."""
+
+        if not hasattr(self, "optical_traps") or len(self.optical_traps) <= 1:
+            # Always keep at least one spot to avoid empty UI state
+            return
+
+        idx = self._current_optical_trap_index()
+        if idx < 0 or idx >= len(self.optical_traps):
+            return
+
+        del self.optical_traps[idx]
+        self.optical_trap_selector.removeItem(idx)
+
+        # Re-label remaining spots as Spot 1, Spot 2, ...
+        for i in range(self.optical_trap_selector.count()):
+            self.optical_trap_selector.setItemText(i, f"Spot {i + 1}")
+
+        # Ensure a valid selection remains
+        if self.optical_trap_selector.count() > 0:
+            new_index = min(idx, self.optical_trap_selector.count() - 1)
+            self.optical_trap_selector.setCurrentIndex(new_index)
     
     def load_ui_scaffolding(self, file_path):
         with open(os.path.join('interface', file_path), 'r') as f:
@@ -199,6 +297,95 @@ class AppUI(QMainWindow):
         browse_button.clicked.connect(_browse_dir)
 
         return group
+
+    def setup_optical_trap_controls(self):
+        """Create controls for optical trap (spot) parameters.
+
+        Displayed inside a titled group box "Optical Trap Settings" and
+        supports multiple spots with per-spot parameters.
+        """
+
+        group = QGroupBox("Optical Trap Settings")
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Internal storage for per-spot parameter dictionaries
+        self.optical_traps = []
+
+        # --- Spot selection + add/remove row ---
+        selector_row = QWidget()
+        selector_layout = QHBoxLayout(selector_row)
+        selector_layout.setContentsMargins(0, 0, 0, 0)
+
+        selector_label = QLabel("Spot:")
+        self.optical_trap_selector = QComboBox()
+        self.optical_trap_add_button = QPushButton("Add")
+        self.optical_trap_remove_button = QPushButton("Remove")
+
+        selector_layout.addWidget(selector_label)
+        selector_layout.addWidget(self.optical_trap_selector)
+        selector_layout.addWidget(self.optical_trap_add_button)
+        selector_layout.addWidget(self.optical_trap_remove_button)
+
+        layout.addWidget(selector_row)
+
+        # --- Parameter rows ---
+        def make_param_row(label_text, attr_name, minimum, maximum, step, decimals=3):
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            label = QLabel(label_text)
+            spin = QDoubleSpinBox()
+            spin.setRange(minimum, maximum)
+            spin.setSingleStep(step)
+            spin.setDecimals(decimals)
+
+            row_layout.addWidget(label)
+            row_layout.addWidget(spin)
+
+            setattr(self, attr_name, spin)
+            return row, spin
+
+        rows_and_spins = []
+        rows_and_spins.append(make_param_row("Intensity:", "trap_intensity_spin", 0.0, 1.0, 0.01))
+        rows_and_spins.append(make_param_row("X:", "trap_x_spin", -100.0, 100.0, 0.1))
+        rows_and_spins.append(make_param_row("Y:", "trap_y_spin", -100.0, 100.0, 0.1))
+        rows_and_spins.append(make_param_row("Z:", "trap_z_spin", -100.0, 100.0, 0.1))
+        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -10.0, 10.0, 0.1))
+        rows_and_spins.append(make_param_row("Phase:", "trap_phase_spin", 0.0, 360.0, 1.0, decimals=1))
+
+        for row, _spin in rows_and_spins:
+            layout.addWidget(row)
+
+        # Map widget attributes to parameter keys used in internal storage
+        self._optical_trap_param_map = {
+            "trap_intensity_spin": "intensity",
+            "trap_x_spin": "x",
+            "trap_y_spin": "y",
+            "trap_z_spin": "z",
+            "trap_vortex_spin": "vortex",
+            "trap_phase_spin": "phase",
+        }
+
+        # Connect signals for per-parameter updates
+        for attr_name, param_key in self._optical_trap_param_map.items():
+            spin = getattr(self, attr_name)
+
+            def _make_handler(key):
+                return lambda value, pkey=key: self._on_optical_trap_param_changed(pkey, value)
+
+            spin.valueChanged.connect(_make_handler(param_key))
+
+        # Wire up selector + add/remove behaviour
+        self.optical_trap_selector.currentIndexChanged.connect(self._on_optical_trap_changed)
+        self.optical_trap_add_button.clicked.connect(self._add_optical_trap)
+        self.optical_trap_remove_button.clicked.connect(self._remove_optical_trap)
+
+        # Start with a single default spot
+        self._add_optical_trap()
+
+        return group
     
     def setup_exposure_slider(self):
         # Container so slider and label can sit side by side
@@ -222,7 +409,9 @@ class AppUI(QMainWindow):
         controls_narrow_layout = QVBoxLayout(controls_narrow)
         
         controls_narrow_layout.addWidget(self.setup_roi())
-        # Experiment configuration controls (directory + name)
+        # Optical trap controls
+        controls_narrow_layout.addWidget(self.setup_optical_trap_controls())
+        # Experiment / time-series configuration controls
         controls_narrow_layout.addWidget(self.setup_experiment_controls())
         return controls_narrow
     
