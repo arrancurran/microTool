@@ -1,6 +1,6 @@
 
 # Create all the UI elements and set their layout and properties
-import json, os
+import json, os, logging
 import pyqtgraph as pg  
 import qtawesome as qta
 
@@ -28,6 +28,8 @@ from PyQt6.QtCore import Qt
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
 from instruments.SLM.udp_holo import send_traps
+
+logger = logging.getLogger(__name__)
 
 # Inherit from QMainWindow so ui is our main window
 class AppUI(QMainWindow):
@@ -81,7 +83,9 @@ class AppUI(QMainWindow):
         """Update the currently-selected trap dict when a parameter changes."""
 
         idx = self._current_optical_trap_index()
+        logger.debug(f"Spin changed: idx={idx}, param={param_key}, value={value}")
         if idx < 0 or idx >= len(self.optical_traps):
+            logger.debug("Ignoring change: no valid trap selected.")
             return
         self.optical_traps[idx][param_key] = float(value)
 
@@ -103,10 +107,10 @@ class AppUI(QMainWindow):
             self.optical_traps = []
 
         default_trap = {
-            "intensity": 1.0,
             "x": 0.0,
             "y": 0.0,
             "z": 0.0,
+            "intensity": 1.0,
             "vortex": 0.0,
             "phase": 0.0,
         }
@@ -159,6 +163,7 @@ class AppUI(QMainWindow):
         try:
             # send_traps knows how to map the generic dicts into the
             # UdpHoloMessage structure.
+            logger.debug(f"Sending {len(self.optical_traps)} trap(s) to SLM: {self.optical_traps}")
             send_traps(self.optical_traps)
             # Also update camera spot markers, if the main UI has
             # access to UIMethods and a camera image size.

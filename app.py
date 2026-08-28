@@ -14,6 +14,7 @@ from interface.status_bar.update_notif import set_main_window
 
 from utils import PopupNotifManager
 from utils.last_session import save_last_session, load_last_session
+from instruments.SLM.udp_holo import close_udp_client
 
 # Configure global logging
 def setup_logging():
@@ -97,6 +98,7 @@ class microTool():
                 self.stream_camera.cleanup()
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
+            close_udp_client()
             event.accept()
             logging.info("Resources cleaned up.")
         except Exception as e:
@@ -110,6 +112,7 @@ class microTool():
                 self.stream_camera.cleanup()
             if hasattr(self, 'camera_sequences'):
                 self.camera_sequences.disconnect_camera()
+            close_udp_client()
             logging.info("Resources cleaned up.")
         except Exception as e:
             logging.error(f"Error during __del__ cleanup: {e}")
