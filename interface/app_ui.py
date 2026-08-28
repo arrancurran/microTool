@@ -531,9 +531,9 @@ class AppUI(QMainWindow):
             "Trap Y coordinate located at the centre of the camera image"
         )
 
-        camera_alignment_layout.addWidget(QLabel("Camera centre X:"), 0, 0)
+        camera_alignment_layout.addWidget(QLabel("Camera centre X (µm):"), 0, 0)
         camera_alignment_layout.addWidget(self.camera_centre_x_spin, 0, 1)
-        camera_alignment_layout.addWidget(QLabel("Camera centre Y:"), 1, 0)
+        camera_alignment_layout.addWidget(QLabel("Camera centre Y (µm):"), 1, 0)
         camera_alignment_layout.addWidget(self.camera_centre_y_spin, 1, 1)
         layout.addWidget(camera_alignment_group)
 
