@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QComboBox,
     QDoubleSpinBox,
+    QTabWidget,
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
@@ -470,6 +471,23 @@ class AppUI(QMainWindow):
         self._add_optical_trap()
 
         return group
+
+    def setup_slm_control_tabs(self):
+        """Create tabbed controls for SLM spots and patterns."""
+
+        self.slm_control_tabs = QTabWidget()
+        self.slm_control_tabs.setObjectName("slm_control_tabs")
+
+        self.spots_tab = self.setup_optical_trap_controls()
+
+        # Named placeholder for pattern controls to be added later.
+        self.patterns_control = QWidget()
+        self.patterns_control.setObjectName("patterns_control")
+
+        self.slm_control_tabs.addTab(self.spots_tab, "Spots")
+        self.slm_control_tabs.addTab(self.patterns_control, "Patterns")
+
+        return self.slm_control_tabs
     
     def setup_exposure_slider(self):
         # Container so slider and label can sit side by side
@@ -493,8 +511,8 @@ class AppUI(QMainWindow):
         controls_narrow_layout = QVBoxLayout(controls_narrow)
         
         controls_narrow_layout.addWidget(self.setup_roi())
-        # Optical trap controls
-        controls_narrow_layout.addWidget(self.setup_optical_trap_controls())
+        # SLM spot and pattern controls
+        controls_narrow_layout.addWidget(self.setup_slm_control_tabs())
         # Experiment / time-series configuration controls
         controls_narrow_layout.addWidget(self.setup_experiment_controls())
         return controls_narrow
