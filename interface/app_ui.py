@@ -1,6 +1,7 @@
 
 # Create all the UI elements and set their layout and properties
 import json, os, logging
+import math
 import pyqtgraph as pg  
 import qtawesome as qta
 
@@ -31,6 +32,8 @@ from utils.img_hist_disp import ImgHistDisplay
 from instruments.SLM.udp_holo import send_traps
 
 logger = logging.getLogger(__name__)
+
+CAMERA_PIXELS_PER_UM = 12.18
 
 # Inherit from QMainWindow so ui is our main window
 class AppUI(QMainWindow):
@@ -151,6 +154,66 @@ class AppUI(QMainWindow):
         # Notify SLM after removing a spot.
         self._send_optical_traps_to_slm()
 
+    def _replace_optical_traps(self, traps):
+        """Replace every spot, refresh the selector, and send one update."""
+
+        if not traps:
+            return
+
+        self.optical_traps = traps
+
+        signals_were_blocked = self.optical_trap_selector.blockSignals(True)
+        try:
+            self.optical_trap_selector.clear()
+            self.optical_trap_selector.addItems(
+                f"Spot {index + 1}" for index in range(len(traps))
+            )
+            self.optical_trap_selector.setCurrentIndex(0)
+        finally:
+            self.optical_trap_selector.blockSignals(signals_were_blocked)
+
+        self._apply_optical_trap_to_widgets(self.optical_traps[0])
+        self._send_optical_traps_to_slm()
+
+    def _create_circular_pattern(self):
+        """Create equally spaced spots around the configured circle."""
+
+        spot_count = self.pattern_spot_count_spin.value()
+        radius = self.pattern_radius_spin.value()
+        origin_x = self.pattern_origin_x_spin.value()
+        origin_y = self.pattern_origin_y_spin.value()
+
+        traps = []
+        for index in range(spot_count):
+            angle = math.tau * index / spot_count
+            traps.append({
+                "x": round(origin_x + radius * math.cos(angle), 12),
+                "y": round(origin_y + radius * math.sin(angle), 12),
+                "z": 0.0,
+                "intensity": 1.0,
+                "vortex": 0.0,
+                "phase": 0.0,
+            })
+
+        self._replace_optical_traps(traps)
+        self.status_bar.showMessage(
+            f"Created {spot_count} spots on a circle of radius {radius:g}",
+            3000,
+        )
+
+    def _update_pattern_radius_limit(self):
+        """Keep the generated circle inside the Spots-tab X/Y ranges."""
+
+        origin_x = self.pattern_origin_x_spin.value()
+        origin_y = self.pattern_origin_y_spin.value()
+        maximum_radius = min(
+            origin_x - self.trap_x_spin.minimum(),
+            self.trap_x_spin.maximum() - origin_x,
+            origin_y - self.trap_y_spin.minimum(),
+            self.trap_y_spin.maximum() - origin_y,
+        )
+        self.pattern_radius_spin.setMaximum(max(0.0, maximum_radius))
+
     def _send_optical_traps_to_slm(self):
         """Send the current optical trap configuration to the SLM via UDP.
 
@@ -179,9 +242,9 @@ class AppUI(QMainWindow):
     def _update_spot_markers_on_camera(self):
         """Project optical trap positions onto the camera image.
 
-        Uses a fixed scale of 12.18 pixels/µm and treats (x, y) = (0, 0)
-        as the centre of the camera image. +x is to the right; +y is up
-        (so image y is inverted).
+        The camera-centre controls specify which trap-space coordinate lies
+        at the centre of the displayed camera image. +x is to the right; +y
+        is up (so image y is inverted).
         """
 
         # UIMethods is attached by app.py after construction.
@@ -200,10 +263,11 @@ class AppUI(QMainWindow):
             return
 
         width, height = image_display.original_image_size
-        cx = width / 2.0
-        cy = height / 2.0
+        image_centre_x = width / 2.0
+        image_centre_y = height / 2.0
 
-        px_per_um = 12.18
+        camera_centre_x = self.camera_centre_x_spin.value()
+        camera_centre_y = self.camera_centre_y_spin.value()
 
         spots_px = []
         for t in self.optical_traps:
@@ -213,9 +277,13 @@ class AppUI(QMainWindow):
             except (TypeError, ValueError):
                 continue
 
-            x_px = cx + x_um * px_per_um
+            x_px = image_centre_x + (
+                x_um - camera_centre_x
+            ) * CAMERA_PIXELS_PER_UM
             # Invert y so +y in trap space is upwards on the image.
-            y_px = cy - y_um * px_per_um
+            y_px = image_centre_y - (
+                y_um - camera_centre_y
+            ) * CAMERA_PIXELS_PER_UM
 
             spots_px.append((x_px, y_px))
 
@@ -437,11 +505,37 @@ class AppUI(QMainWindow):
         rows_and_spins.append(make_param_row("X:", "trap_x_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Y:", "trap_y_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Z:", "trap_z_spin", -100.0, 100.0, 0.1))
-        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -10.0, 10.0, 0.1))
+        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -100.0, 100.0, 1.0))
         rows_and_spins.append(make_param_row("Phase:", "trap_phase_spin", 0.0, 360.0, 1.0, decimals=1))
 
         for row, _spin in rows_and_spins:
             layout.addWidget(row)
+
+        # --- Camera marker alignment ---
+        camera_alignment_group = QGroupBox("Camera Overlay Alignment")
+        camera_alignment_layout = QGridLayout(camera_alignment_group)
+
+        self.camera_centre_x_spin = QDoubleSpinBox()
+        self.camera_centre_x_spin.setRange(-100.0, 100.0)
+        self.camera_centre_x_spin.setSingleStep(0.1)
+        self.camera_centre_x_spin.setDecimals(3)
+        self.camera_centre_x_spin.setToolTip(
+            "Trap X coordinate located at the centre of the camera image"
+        )
+
+        self.camera_centre_y_spin = QDoubleSpinBox()
+        self.camera_centre_y_spin.setRange(-100.0, 100.0)
+        self.camera_centre_y_spin.setSingleStep(0.1)
+        self.camera_centre_y_spin.setDecimals(3)
+        self.camera_centre_y_spin.setToolTip(
+            "Trap Y coordinate located at the centre of the camera image"
+        )
+
+        camera_alignment_layout.addWidget(QLabel("Camera centre X:"), 0, 0)
+        camera_alignment_layout.addWidget(self.camera_centre_x_spin, 0, 1)
+        camera_alignment_layout.addWidget(QLabel("Camera centre Y:"), 1, 0)
+        camera_alignment_layout.addWidget(self.camera_centre_y_spin, 1, 1)
+        layout.addWidget(camera_alignment_group)
 
         # Map widget attributes to parameter keys used in internal storage
         self._optical_trap_param_map = {
@@ -462,6 +556,14 @@ class AppUI(QMainWindow):
 
             spin.valueChanged.connect(_make_handler(param_key))
 
+        # Camera alignment moves only the overlay; it does not update the SLM.
+        self.camera_centre_x_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+        self.camera_centre_y_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+
         # Wire up selector + add/remove behaviour
         self.optical_trap_selector.currentIndexChanged.connect(self._on_optical_trap_changed)
         self.optical_trap_add_button.clicked.connect(self._add_optical_trap)
@@ -480,14 +582,78 @@ class AppUI(QMainWindow):
 
         self.spots_tab = self.setup_optical_trap_controls()
 
-        # Named placeholder for pattern controls to be added later.
-        self.patterns_control = QWidget()
-        self.patterns_control.setObjectName("patterns_control")
+        self.patterns_control = self.setup_pattern_controls()
 
         self.slm_control_tabs.addTab(self.spots_tab, "Spots")
         self.slm_control_tabs.addTab(self.patterns_control, "Patterns")
 
         return self.slm_control_tabs
+
+    def setup_pattern_controls(self):
+        """Create controls for an equally spaced circular spot pattern."""
+
+        page = QWidget()
+        page.setObjectName("patterns_control")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 8, 8, 8)
+        page_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        group = QGroupBox("Circular Spot Pattern")
+        layout = QGridLayout(group)
+
+        self.pattern_spot_count_spin = QSpinBox()
+        self.pattern_spot_count_spin.setRange(1, 100)
+        self.pattern_spot_count_spin.setValue(8)
+        self.pattern_spot_count_spin.setToolTip(
+            "Number of spots distributed evenly around the circle"
+        )
+
+        self.pattern_radius_spin = QDoubleSpinBox()
+        self.pattern_radius_spin.setRange(0.0, 100.0)
+        self.pattern_radius_spin.setDecimals(3)
+        self.pattern_radius_spin.setSingleStep(0.1)
+        self.pattern_radius_spin.setValue(10.0)
+        self.pattern_radius_spin.setToolTip("Circle radius in trap-coordinate units")
+
+        self.pattern_origin_x_spin = QDoubleSpinBox()
+        self.pattern_origin_x_spin.setRange(
+            self.trap_x_spin.minimum(), self.trap_x_spin.maximum()
+        )
+        self.pattern_origin_x_spin.setDecimals(3)
+        self.pattern_origin_x_spin.setSingleStep(0.1)
+        self.pattern_origin_x_spin.setToolTip("X coordinate of the circle centre")
+
+        self.pattern_origin_y_spin = QDoubleSpinBox()
+        self.pattern_origin_y_spin.setRange(
+            self.trap_y_spin.minimum(), self.trap_y_spin.maximum()
+        )
+        self.pattern_origin_y_spin.setDecimals(3)
+        self.pattern_origin_y_spin.setSingleStep(0.1)
+        self.pattern_origin_y_spin.setToolTip("Y coordinate of the circle centre")
+
+        layout.addWidget(QLabel("Number of spots (N):"), 0, 0)
+        layout.addWidget(self.pattern_spot_count_spin, 0, 1)
+        layout.addWidget(QLabel("Radius (r):"), 1, 0)
+        layout.addWidget(self.pattern_radius_spin, 1, 1)
+        layout.addWidget(QLabel("Origin X:"), 2, 0)
+        layout.addWidget(self.pattern_origin_x_spin, 2, 1)
+        layout.addWidget(QLabel("Origin Y:"), 3, 0)
+        layout.addWidget(self.pattern_origin_y_spin, 3, 1)
+
+        self.pattern_create_button = QPushButton("Create spots")
+        self.pattern_create_button.clicked.connect(self._create_circular_pattern)
+        layout.addWidget(self.pattern_create_button, 4, 0, 1, 2)
+
+        self.pattern_origin_x_spin.valueChanged.connect(
+            lambda _value: self._update_pattern_radius_limit()
+        )
+        self.pattern_origin_y_spin.valueChanged.connect(
+            lambda _value: self._update_pattern_radius_limit()
+        )
+        self._update_pattern_radius_limit()
+
+        page_layout.addWidget(group)
+        return page
     
     def setup_exposure_slider(self):
         # Container so slider and label can sit side by side

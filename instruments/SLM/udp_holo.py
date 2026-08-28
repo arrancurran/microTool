@@ -181,14 +181,45 @@ def close_udp_client() -> None:
 
 # Reusable defaults for fields that are not yet controlled via the UI.
 DEFAULT_BLAZING: Sequence[float] = [
-    0.0, 0.061207, 0.121163, 0.178615, 0.232312, 0.281003, 0.323435, 0.358392,
-    0.385699, 0.406379, 0.421520, 0.432209, 0.439535, 0.444586, 0.448449, 0.452214,
-    0.456968, 0.463798, 0.473794, 0.488043, 0.507634, 0.533624, 0.566254, 0.604853,
-    0.648701, 0.697080, 0.749270, 0.804552, 0.862208, 0.921519, 0.981766, 1.0,
+    0.000000,
+    0.019028,
+    0.038486,
+    0.058803,
+    0.080407,
+    0.103730,
+    0.129198,
+    0.157243,
+    0.188294,
+    0.222752,
+    0.260533,
+    0.301132,
+    0.344029,
+    0.388706,
+    0.434645,
+    0.481327,
+    0.528233,
+    0.574844,
+    0.620643,
+    0.665109,
+    0.707724,
+    0.747971,
+    0.785329,
+    0.819368,
+    0.850262,
+    0.878442,
+    0.904337,
+    0.928379,
+    0.950999,
+    0.972628,
+    0.993695,
+    1.000000,
 ]
 
-DEFAULT_ZERNIKE: Sequence[float] = [7.0, 0.0, -7.0] + [0.0] * 9
-DEFAULT_WINDOW_RECT: Tuple[int, int, int, int] = (0, 0, 512, 512)
+
+
+# DEFAULT_ZERNIKE: Sequence[float] = [7.0, 0.0, -7.0] + [0.0] * 9 Thes are the values we used with Joost
+DEFAULT_ZERNIKE: Sequence[float] = [8.0] +  [0.0] * 11  # 12 Zernike coefficients, all zero
+DEFAULT_WINDOW_RECT: Tuple[int, int, int, int] = (2560, 0, 512, 512)
 
 # Scaling factors for spot coordinates before sending to the SLM
 X_SCALE: float = -1.84e-5
