@@ -1,156 +1,317 @@
-"""
-Mock camera implementation for testing and development without hardware.
-"""
-import numpy as np
+"""Mock camera backend for development without Ximea hardware or xiAPI."""
+
+from __future__ import annotations
+
+import json
 import time
+from pathlib import Path
+from threading import Lock
+from typing import Any
+
+import numpy as np
+
+
+class NoImage:
+    """Small in-memory replacement for ``xiapi.Image``."""
+
+    def __init__(self) -> None:
+        self._data: np.ndarray | None = None
+        self.tsSec = 0
+        self.tsUSec = 0
+
+    def set_image_data_numpy(self, data: np.ndarray) -> None:
+        self._data = data
+
+    def get_image_data_numpy(self) -> np.ndarray | None:
+        return self._data
+
 
 class NoCam:
-    """Mock implementation of xiapi.Camera for testing."""
-    def __init__(self):
-        self.width = 2048
-        self.height = 2048
-        self.exposure = 10000  # 10ms default
-        self.framerate = 30
+    """In-memory replacement for ``xiapi.Camera`` used by the mock backend."""
+
+    SENSOR_WIDTH = 2048
+    SENSOR_HEIGHT = 2048
+
+    def __init__(self) -> None:
+        self.width = self.SENSOR_WIDTH
+        self.height = self.SENSOR_HEIGHT
+        self.exposure = 10_000.0
+        self.framerate = 30.0
         self.offset_x = 0
         self.offset_y = 0
+        self.debug_level = "XI_DL_WARNING"
         self._is_open = False
         self._is_running = False
-        self._last_frame_time = 0
-        
-    def open_device(self):
+        self._last_frame_time = 0.0
+
+    def open_device(self) -> bool:
         self._is_open = True
         return True
-        
-    def close_device(self):
+
+    def close_device(self) -> bool:
+        self._is_running = False
         self._is_open = False
         return True
-        
-    def start_acquisition(self):
+
+    def start_acquisition(self) -> bool:
         if not self._is_open:
             return False
         self._is_running = True
-        self._last_frame_time = time.time()
+        self._last_frame_time = 0.0
         return True
-        
-    def stop_acquisition(self):
+
+    def stop_acquisition(self) -> bool:
         self._is_running = False
         return True
-        
-    def get_device_name(self):
-        return b"No Camera"
-        
-    def get_image(self, image):
+
+    def get_image(self, image: NoImage) -> bool:
         if not self._is_running:
             return False
-            
-        # Generate a simple test pattern
-        current_time = time.time()
-        frame_time = 1.0 / self.framerate
-        if current_time - self._last_frame_time < frame_time:
+
+        now = time.time()
+        frame_time = 1.0 / max(self.framerate, 1.0)
+        if now - self._last_frame_time < frame_time:
             return False
-            
-        # Create a test pattern
-        x = np.linspace(0, 2*np.pi, self.width)
-        y = np.linspace(0, 2*np.pi, self.height)
-        xx, yy = np.meshgrid(x, y)
-        pattern = np.sin(xx + time.time()) * np.cos(yy + time.time())
-        pattern = (pattern + 1) * 127.5  # Scale to 0-255
-        
-        # Add some noise
-        noise = np.random.normal(0, 10, (self.height, self.width))
-        pattern = np.clip(pattern + noise, 0, 255).astype(np.uint8)
-        
-        # Set image data
+
+        # A moving gradient is inexpensive to generate even at the full mock ROI.
+        x = np.arange(self.width, dtype=np.uint16)
+        y = np.arange(self.height, dtype=np.uint16)[:, None]
+        phase = int(now * 50) % 256
+        pattern = ((x + y + phase) % 256).astype(np.uint8)
         image.set_image_data_numpy(pattern)
-        image.tsSec = int(current_time)
-        image.tsUSec = int((current_time % 1) * 1e6)
-        
-        self._last_frame_time = current_time
+        image.tsSec = int(now)
+        image.tsUSec = int((now % 1) * 1_000_000)
+        self._last_frame_time = now
         return True
-        
-    def get_image_data_numpy(self):
-        if not self._is_running:
-            return None
-        return np.random.randint(0, 255, (self.height, self.width), dtype=np.uint8)
-        
-    def get_exposure(self):
+
+    def get_device_name(self) -> bytes:
+        return b"noCam"
+
+    def get_device_model_id(self) -> int:
+        return 0
+
+    def get_device_type(self) -> bytes:
+        return b"Mock Camera"
+
+    def get_device_sn(self) -> bytes:
+        return b"NOCAM-0000"
+
+    def get_exposure(self) -> float:
         return self.exposure
-        
-    def set_exposure(self, value):
-        self.exposure = value
+
+    def set_exposure(self, value: float) -> bool:
+        self.exposure = float(value)
         return True
-        
-    def get_exposure_min(self):
-        return 1
-        
-    def get_exposure_max(self):
-        return 1000000
-        
-    def get_width(self):
-        return self.width
-        
-    def get_width_min(self):
-        return 1
-        
-    def get_width_max(self):
-        return 2048
-        
-    def get_width_inc(self):
-        return 1
-        
-    def get_height(self):
-        return self.height
-        
-    def get_height_min(self):
-        return 1
-        
-    def get_height_max(self):
-        return 2048
-        
-    def get_height_inc(self):
-        return 1
-        
-    def get_offset_x(self):
-        return self.offset_x
-        
-    def get_offset_x_min(self):
-        return 0
-        
-    def get_offset_x_max(self):
-        return 2048
-        
-    def get_offset_x_inc(self):
-        return 1
-        
-    def set_offset_x(self, value):
-        self.offset_x = value
-        return True
-        
-    def get_offset_y(self):
-        return self.offset_y
-        
-    def get_offset_y_min(self):
-        return 0
-        
-    def get_offset_y_max(self):
-        return 2048
-        
-    def get_offset_y_inc(self):
-        return 1
-        
-    def set_offset_y(self, value):
-        self.offset_y = value
-        return True
-        
-    def get_framerate(self):
+
+    def get_exposure_minimum(self) -> float:
+        return 1.0
+
+    def get_exposure_maximum(self) -> float:
+        return 1_000_000.0
+
+    def get_framerate(self) -> float:
         return self.framerate
-        
-    def set_framerate(self, value):
-        self.framerate = value
+
+    def set_framerate(self, value: float) -> bool:
+        self.framerate = float(value)
         return True
-        
-    def get_framerate_min(self):
+
+    def get_framerate_minimum(self) -> float:
+        return 1.0
+
+    def get_framerate_maximum(self) -> float:
+        return 100.0
+
+    def get_framerate_increment(self) -> float:
+        return 1.0
+
+    def get_width(self) -> int:
+        return self.width
+
+    def set_width(self, value: int) -> bool:
+        self.width = int(value)
+        return True
+
+    def get_width_minimum(self) -> int:
         return 1
-        
-    def get_framerate_max(self):
-        return 100 
+
+    def get_width_maximum(self) -> int:
+        return self.SENSOR_WIDTH
+
+    def get_width_increment(self) -> int:
+        return 1
+
+    def get_height(self) -> int:
+        return self.height
+
+    def set_height(self, value: int) -> bool:
+        self.height = int(value)
+        return True
+
+    def get_height_minimum(self) -> int:
+        return 1
+
+    def get_height_maximum(self) -> int:
+        return self.SENSOR_HEIGHT
+
+    def get_height_increment(self) -> int:
+        return 1
+
+    def get_offsetX(self) -> int:
+        return self.offset_x
+
+    def set_offsetX(self, value: int) -> bool:
+        self.offset_x = int(value)
+        return True
+
+    def get_offsetX_minimum(self) -> int:
+        return 0
+
+    def get_offsetX_maximum(self) -> int:
+        return self.SENSOR_WIDTH
+
+    def get_offsetX_increment(self) -> int:
+        return 1
+
+    def get_offsetY(self) -> int:
+        return self.offset_y
+
+    def set_offsetY(self, value: int) -> bool:
+        self.offset_y = int(value)
+        return True
+
+    def get_offsetY_minimum(self) -> int:
+        return 0
+
+    def get_offsetY_maximum(self) -> int:
+        return self.SENSOR_HEIGHT
+
+    def get_offsetY_increment(self) -> int:
+        return 1
+
+    def get_debug_level(self) -> str:
+        return self.debug_level
+
+    def set_debug_level(self, value: str) -> bool:
+        self.debug_level = str(value)
+        return True
+
+
+class CameraControl:
+    """Mock implementation of the public Ximea ``CameraControl`` interface."""
+
+    def __init__(self) -> None:
+        self.camera: NoCam | None = None
+        self.image: NoImage | None = None
+        self.set_commands_by_name: dict[str, dict[str, Any]] = {}
+        self.get_commands_by_name: dict[str, dict[str, Any]] = {}
+        self.camera_lock = Lock()
+
+    def _load_commands_from_json(self) -> None:
+        commands_path = Path(__file__).resolve().parent / "commands.json"
+        with commands_path.open("r", encoding="utf-8") as file:
+            commands = json.load(file)
+        self.set_commands_by_name = {cmd["name"]: cmd for cmd in commands["set"]}
+        self.get_commands_by_name = {cmd["name"]: cmd for cmd in commands["get"]}
+
+    def start_command_thread(self) -> None:
+        """Compatibility no-op; mock commands execute synchronously."""
+
+    def stop_command_thread(self) -> None:
+        """Compatibility no-op; mock commands execute synchronously."""
+
+    def call_camera_command(
+        self, friendly_name: str, method: str, value: Any = None
+    ) -> Any:
+        if self.camera is None:
+            return None
+
+        commands = (
+            self.set_commands_by_name if method == "set" else self.get_commands_by_name
+        )
+        command = commands.get(friendly_name)
+        if command is None:
+            return None
+
+        camera_method = getattr(self.camera, f"{method}_{command['cmd']}", None)
+        if camera_method is None:
+            return None
+
+        with self.camera_lock:
+            if method == "get":
+                return camera_method()
+
+            value_type = command.get("type", "float")
+            if value_type == "float":
+                value = float(value)
+            elif value_type == "int":
+                value = int(value)
+            elif value_type == "str":
+                value = str(value)
+            camera_method(value)
+            # Match the Ximea controller, whose queued set operations do not
+            # return a result to callers.
+            return None
+
+    def initialize_camera(self) -> None:
+        if self.camera is None:
+            self.camera = NoCam()
+            self._load_commands_from_json()
+            self.start_command_thread()
+
+    def open_camera(self) -> None:
+        if self.camera is not None:
+            self.camera.open_device()
+
+    def ImageObject(self) -> None:
+        if self.image is None:
+            self.image = NoImage()
+
+    def start_camera(self) -> None:
+        if self.camera is not None:
+            self.camera.start_acquisition()
+
+    def get_image(self) -> bool | None:
+        if self.camera is not None and self.image is not None:
+            return self.camera.get_image(self.image)
+        return None
+
+    def get_image_data(self) -> np.ndarray | None:
+        if self.image is not None:
+            return self.image.get_image_data_numpy()
+        return None
+
+    def get_image_timestamp(self) -> float | None:
+        if self.image is not None:
+            return self.image.tsSec + self.image.tsUSec / 1_000_000
+        return None
+
+    def stop_camera(self) -> None:
+        if self.camera is not None:
+            self.camera.stop_acquisition()
+
+    def close(self) -> None:
+        self.stop_command_thread()
+        if self.camera is not None:
+            self.camera.close_device()
+            self.camera = None
+
+
+class CameraSequences:
+    """Mock implementation of the public Ximea ``CameraSequences`` interface."""
+
+    def __init__(self, camera_control: CameraControl) -> None:
+        self.camera_control = camera_control
+
+    def connect_camera(self) -> None:
+        self.camera_control.initialize_camera()
+        self.camera_control.open_camera()
+        self.camera_control.ImageObject()
+
+    def disconnect_camera(self) -> None:
+        self.camera_control.close()
+
+    def acquire_time_series(self, num_images: int) -> bool | None:
+        for _ in range(num_images):
+            return self.camera_control.get_image()
+        return None

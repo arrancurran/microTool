@@ -201,6 +201,12 @@ class AppUI(QMainWindow):
             3000,
         )
 
+    def _on_pattern_parameter_changed(self):
+        """Regenerate the circular pattern after any pattern input changes."""
+
+        self._update_pattern_radius_limit()
+        self._create_circular_pattern()
+
     def _update_pattern_radius_limit(self):
         """Keep the generated circle inside the Spots-tab X/Y ranges."""
 
@@ -212,7 +218,14 @@ class AppUI(QMainWindow):
             origin_y - self.trap_y_spin.minimum(),
             self.trap_y_spin.maximum() - origin_y,
         )
-        self.pattern_radius_spin.setMaximum(max(0.0, maximum_radius))
+        # Updating the maximum can clamp the current radius and emit another
+        # valueChanged signal. Block that nested signal because the caller will
+        # regenerate the pattern once after the limit has been applied.
+        signals_were_blocked = self.pattern_radius_spin.blockSignals(True)
+        try:
+            self.pattern_radius_spin.setMaximum(max(0.0, maximum_radius))
+        finally:
+            self.pattern_radius_spin.blockSignals(signals_were_blocked)
 
     def _send_optical_traps_to_slm(self):
         """Send the current optical trap configuration to the SLM via UDP.
@@ -640,16 +653,21 @@ class AppUI(QMainWindow):
         layout.addWidget(QLabel("Origin Y:"), 3, 0)
         layout.addWidget(self.pattern_origin_y_spin, 3, 1)
 
-        self.pattern_create_button = QPushButton("Create spots")
+        self.pattern_create_button = QPushButton("Create pattern")
         self.pattern_create_button.clicked.connect(self._create_circular_pattern)
         layout.addWidget(self.pattern_create_button, 4, 0, 1, 2)
 
-        self.pattern_origin_x_spin.valueChanged.connect(
-            lambda _value: self._update_pattern_radius_limit()
+        pattern_parameters = (
+            self.pattern_spot_count_spin,
+            self.pattern_radius_spin,
+            self.pattern_origin_x_spin,
+            self.pattern_origin_y_spin,
         )
-        self.pattern_origin_y_spin.valueChanged.connect(
-            lambda _value: self._update_pattern_radius_limit()
-        )
+        for parameter in pattern_parameters:
+            parameter.valueChanged.connect(
+                lambda _value: self._on_pattern_parameter_changed()
+            )
+
         self._update_pattern_radius_limit()
 
         page_layout.addWidget(group)

@@ -1,3 +1,4 @@
+import argparse
 import sys, os, logging
 from pathlib import Path
 from datetime import datetime
@@ -6,7 +7,7 @@ from PyQt6.QtCore import QTimer
 
 from interface import AppUI, UIMethods
 
-from instruments import CameraControl, CameraSequences
+from instruments import get_camera_backend
 
 from acquisitions.live_stream_handler import LiveStreamHandler
 
@@ -35,12 +36,13 @@ def setup_logging():
     logging.info("Starting microTool application")
 
 class microTool():
-    def __init__(self):
+    def __init__(self, camera_backend="xicam", qt_args=None):
         # Passing sys.argv so any command-line arguments are forwarded. 
-        self.app = QApplication(sys.argv)
+        self.app = QApplication(qt_args if qt_args is not None else sys.argv)
         self.window = AppUI()
                 
         """Camera Control"""
+        CameraControl, CameraSequences = get_camera_backend(camera_backend)
         self.camera_control = CameraControl()
         self.camera_sequences = CameraSequences(self.camera_control)
         self.camera_sequences.connect_camera()
@@ -121,8 +123,22 @@ class microTool():
         # Start the application in full screen
         self.window.showFullScreen()
         sys.exit(self.app.exec())
+
+
+def parse_command_line(argv=None):
+    """Parse microTool options and leave unknown options for Qt."""
+    parser = argparse.ArgumentParser(description="Run microTool")
+    parser.add_argument(
+        "--camera",
+        type=str.lower,
+        choices=("xicam", "nocam"),
+        default="xicam",
+        help="camera backend to use (default: xicam)",
+    )
+    return parser.parse_known_args(argv)
         
 if __name__ == "__main__":
+    args, qt_args = parse_command_line()
     setup_logging()
-    app = microTool()
+    app = microTool(camera_backend=args.camera, qt_args=[sys.argv[0], *qt_args])
     app.run()
