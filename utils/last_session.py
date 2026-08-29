@@ -22,8 +22,8 @@ def _safe_getattr(obj: Any, name: str) -> Any:
 def save_last_session(window: Any, camera_control: Any) -> None:
     """Persist front-panel settings to last_session.json.
 
-    Captures ROI spinboxes, exposure, and experiment settings from the
-    Acquisition Settings group so they can be restored on the next run.
+    Captures ROI spinboxes, exposure, SLM centre alignment, and experiment
+    settings so they can be restored on the next run.
     """
 
     data: Dict[str, Any] = {}
@@ -68,6 +68,18 @@ def save_last_session(window: Any, camera_control: Any) -> None:
             data["exposure_us"] = float(exposure_value)
         except Exception:
             pass
+
+    # --- SLM centre / camera overlay alignment ---
+    slm_centre: Dict[str, float] = {}
+    for axis in ("x", "y"):
+        spin = _safe_getattr(window, f"camera_centre_{axis}_spin")
+        if spin is not None:
+            try:
+                slm_centre[axis] = float(spin.value())
+            except Exception as e:
+                logger.error(f"Error reading SLM centre {axis}: {e}")
+    if slm_centre:
+        data["slm_centre"] = slm_centre
 
     # --- Experiment / acquisition settings ---
     experiment: Dict[str, Any] = {}
@@ -163,6 +175,18 @@ def load_last_session(window: Any, camera_control: Any) -> None:
                 camera_control.call_camera_command("exposure", "set", float(exposure_val))
             except Exception as e:
                 logger.error(f"Error restoring exposure on camera: {e}")
+
+    # --- SLM centre / camera overlay alignment restore ---
+    slm_centre = data.get("slm_centre", {}) or {}
+    for axis in ("x", "y"):
+        if axis not in slm_centre:
+            continue
+        spin = _safe_getattr(window, f"camera_centre_{axis}_spin")
+        if spin is not None:
+            try:
+                spin.setValue(float(slm_centre[axis]))
+            except (TypeError, ValueError) as e:
+                logger.error(f"Error restoring SLM centre {axis}: {e}")
 
     # --- Experiment / acquisition settings restore ---
     experiment = data.get("experiment", {}) or {}

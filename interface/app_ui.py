@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
     QTabWidget,
 )
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
@@ -207,6 +207,31 @@ class AppUI(QMainWindow):
         self._update_pattern_radius_limit()
         self._create_circular_pattern()
 
+    def _schedule_pattern_update(self):
+        """Debounce edits while a pattern value is being typed."""
+
+        if self._pattern_update_in_progress:
+            return
+        self._pattern_update_timer.start()
+
+    def _apply_pattern_update(self):
+        """Commit pending editor text and regenerate the pattern once."""
+
+        if self._pattern_update_in_progress:
+            return
+
+        self._pattern_update_timer.stop()
+        self._pattern_update_in_progress = True
+        try:
+            # QSpinBox/QDoubleSpinBox can display newly typed text before their
+            # value() has been committed. Explicit interpretation makes the
+            # automatic update use exactly what is visible in every field.
+            for parameter in self._pattern_parameters:
+                parameter.interpretText()
+            self._on_pattern_parameter_changed()
+        finally:
+            self._pattern_update_in_progress = False
+
     def _update_pattern_radius_limit(self):
         """Keep the generated circle inside the Spots-tab X/Y ranges."""
 
@@ -237,20 +262,32 @@ class AppUI(QMainWindow):
         if not hasattr(self, "optical_traps"):
             return
 
+        # The noCam backend exposes set_spots(); real camera controllers do
+        # not, so this has no effect on the Ximea path.
+        ui_methods = getattr(self, "ui_methods", None)
+        camera_control = getattr(ui_methods, "camera_control", None)
+        update_mock_spots = getattr(camera_control, "set_spots", None)
+        if callable(update_mock_spots):
+            try:
+                update_mock_spots(self.optical_traps)
+            except Exception as e:
+                logger.error(f"Error updating noCam hologram spots: {e}")
+
         try:
             # send_traps knows how to map the generic dicts into the
             # UdpHoloMessage structure.
             logger.debug(f"Sending {len(self.optical_traps)} trap(s) to SLM: {self.optical_traps}")
             send_traps(self.optical_traps)
-            # Also update camera spot markers, if the main UI has
-            # access to UIMethods and a camera image size.
-            self._update_spot_markers_on_camera()
         except Exception as e:
             # Log errors but avoid crashing the UI if the SLM is
             # unreachable.
             import logging
 
             logging.getLogger(__name__).error(f"Error sending traps to SLM: {e}")
+
+        # Camera overlays and the mock hologram should still update if the SLM
+        # UDP endpoint is unavailable.
+        self._update_spot_markers_on_camera()
 
     def _update_spot_markers_on_camera(self):
         """Project optical trap positions onto the camera image.
@@ -653,19 +690,26 @@ class AppUI(QMainWindow):
         layout.addWidget(QLabel("Origin Y:"), 3, 0)
         layout.addWidget(self.pattern_origin_y_spin, 3, 1)
 
-        self.pattern_create_button = QPushButton("Create pattern")
-        self.pattern_create_button.clicked.connect(self._create_circular_pattern)
-        layout.addWidget(self.pattern_create_button, 4, 0, 1, 2)
-
-        pattern_parameters = (
+        self._pattern_parameters = (
             self.pattern_spot_count_spin,
             self.pattern_radius_spin,
             self.pattern_origin_x_spin,
             self.pattern_origin_y_spin,
         )
-        for parameter in pattern_parameters:
-            parameter.valueChanged.connect(
-                lambda _value: self._on_pattern_parameter_changed()
+
+        self._pattern_update_in_progress = False
+        self._pattern_update_timer = QTimer(self)
+        self._pattern_update_timer.setSingleShot(True)
+        self._pattern_update_timer.setInterval(200)
+        self._pattern_update_timer.timeout.connect(self._apply_pattern_update)
+
+        self.pattern_create_button = QPushButton("Create pattern")
+        self.pattern_create_button.clicked.connect(self._apply_pattern_update)
+        layout.addWidget(self.pattern_create_button, 4, 0, 1, 2)
+
+        for parameter in self._pattern_parameters:
+            parameter.textChanged.connect(
+                lambda _text: self._schedule_pattern_update()
             )
 
         self._update_pattern_radius_limit()
