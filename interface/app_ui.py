@@ -29,7 +29,11 @@ from PyQt6.QtCore import Qt, QTimer
 
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
-from instruments.SLM.udp_holo import send_traps
+from instruments.SLM.udp_holo import (
+    get_coordinate_scales,
+    send_traps,
+    set_coordinate_scales,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +342,16 @@ class AppUI(QMainWindow):
             spots_px.append((x_px, y_px))
 
         ui_methods.set_spot_positions(spots_px)
+
+    def _on_slm_scale_changed(self):
+        """Apply calibration scale factors and refresh the SLM payload."""
+
+        set_coordinate_scales(
+            self.slm_x_scale_spin.value(),
+            self.slm_y_scale_spin.value(),
+            self.slm_z_scale_spin.value(),
+        )
+        self._send_optical_traps_to_slm()
     
     def load_ui_scaffolding(self, file_path):
         with open(os.path.join('interface', file_path), 'r') as f:
@@ -561,32 +575,6 @@ class AppUI(QMainWindow):
         for row, _spin in rows_and_spins:
             layout.addWidget(row)
 
-        # --- Camera marker alignment ---
-        camera_alignment_group = QGroupBox("Camera Overlay Alignment")
-        camera_alignment_layout = QGridLayout(camera_alignment_group)
-
-        self.camera_centre_x_spin = QDoubleSpinBox()
-        self.camera_centre_x_spin.setRange(-100.0, 100.0)
-        self.camera_centre_x_spin.setSingleStep(0.1)
-        self.camera_centre_x_spin.setDecimals(3)
-        self.camera_centre_x_spin.setToolTip(
-            "Trap X coordinate located at the centre of the camera image"
-        )
-
-        self.camera_centre_y_spin = QDoubleSpinBox()
-        self.camera_centre_y_spin.setRange(-100.0, 100.0)
-        self.camera_centre_y_spin.setSingleStep(0.1)
-        self.camera_centre_y_spin.setDecimals(3)
-        self.camera_centre_y_spin.setToolTip(
-            "Trap Y coordinate located at the centre of the camera image"
-        )
-
-        camera_alignment_layout.addWidget(QLabel("Camera centre X (µm):"), 0, 0)
-        camera_alignment_layout.addWidget(self.camera_centre_x_spin, 0, 1)
-        camera_alignment_layout.addWidget(QLabel("Camera centre Y (µm):"), 1, 0)
-        camera_alignment_layout.addWidget(self.camera_centre_y_spin, 1, 1)
-        layout.addWidget(camera_alignment_group)
-
         # Map widget attributes to parameter keys used in internal storage
         self._optical_trap_param_map = {
             "trap_intensity_spin": "intensity",
@@ -606,14 +594,6 @@ class AppUI(QMainWindow):
 
             spin.valueChanged.connect(_make_handler(param_key))
 
-        # Camera alignment moves only the overlay; it does not update the SLM.
-        self.camera_centre_x_spin.valueChanged.connect(
-            lambda _value: self._update_spot_markers_on_camera()
-        )
-        self.camera_centre_y_spin.valueChanged.connect(
-            lambda _value: self._update_spot_markers_on_camera()
-        )
-
         # Wire up selector + add/remove behaviour
         self.optical_trap_selector.currentIndexChanged.connect(self._on_optical_trap_changed)
         self.optical_trap_add_button.clicked.connect(self._add_optical_trap)
@@ -625,7 +605,7 @@ class AppUI(QMainWindow):
         return group
 
     def setup_slm_control_tabs(self):
-        """Create tabbed controls for SLM spots and patterns."""
+        """Create tabbed controls for SLM spots, patterns, and calibration."""
 
         self.slm_control_tabs = QTabWidget()
         self.slm_control_tabs.setObjectName("slm_control_tabs")
@@ -633,9 +613,11 @@ class AppUI(QMainWindow):
         self.spots_tab = self.setup_optical_trap_controls()
 
         self.patterns_control = self.setup_pattern_controls()
+        self.calibration_control = self.setup_calibration_controls()
 
         self.slm_control_tabs.addTab(self.spots_tab, "Spots")
         self.slm_control_tabs.addTab(self.patterns_control, "Patterns")
+        self.slm_control_tabs.addTab(self.calibration_control, "Calibration")
 
         return self.slm_control_tabs
 
@@ -715,6 +697,82 @@ class AppUI(QMainWindow):
         self._update_pattern_radius_limit()
 
         page_layout.addWidget(group)
+        return page
+
+    def setup_calibration_controls(self):
+        """Create camera-overlay and SLM coordinate calibration controls."""
+
+        page = QWidget()
+        page.setObjectName("calibration_control")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 8, 8, 8)
+        page_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        camera_group = QGroupBox("Camera Overlay Alignment")
+        camera_layout = QGridLayout(camera_group)
+
+        self.camera_centre_x_spin = QDoubleSpinBox()
+        self.camera_centre_x_spin.setRange(-100.0, 100.0)
+        self.camera_centre_x_spin.setSingleStep(0.1)
+        self.camera_centre_x_spin.setDecimals(3)
+        self.camera_centre_x_spin.setToolTip(
+            "Trap X coordinate located at the centre of the camera image"
+        )
+
+        self.camera_centre_y_spin = QDoubleSpinBox()
+        self.camera_centre_y_spin.setRange(-100.0, 100.0)
+        self.camera_centre_y_spin.setSingleStep(0.1)
+        self.camera_centre_y_spin.setDecimals(3)
+        self.camera_centre_y_spin.setToolTip(
+            "Trap Y coordinate located at the centre of the camera image"
+        )
+
+        camera_layout.addWidget(QLabel("Camera centre X (µm):"), 0, 0)
+        camera_layout.addWidget(self.camera_centre_x_spin, 0, 1)
+        camera_layout.addWidget(QLabel("Camera centre Y (µm):"), 1, 0)
+        camera_layout.addWidget(self.camera_centre_y_spin, 1, 1)
+        page_layout.addWidget(camera_group)
+
+        scales_group = QGroupBox("SLM Coordinate Scaling")
+        scales_layout = QGridLayout(scales_group)
+        x_scale, y_scale, z_scale = get_coordinate_scales()
+
+        scale_controls = (
+            ("X_SCALE:", "slm_x_scale_spin", x_scale),
+            ("Y_SCALE:", "slm_y_scale_spin", y_scale),
+            ("Z_SCALE:", "slm_z_scale_spin", z_scale),
+        )
+        for row, (label, attr_name, value) in enumerate(scale_controls):
+            spin = QDoubleSpinBox()
+            spin.setRange(-1.0, 1.0)
+            spin.setDecimals(10)
+            spin.setSingleStep(0.0000001)
+            spin.setValue(value)
+            spin.setToolTip(
+                "Multiplier applied to this trap coordinate before sending it to the SLM"
+            )
+            setattr(self, attr_name, spin)
+            scales_layout.addWidget(QLabel(label), row, 0)
+            scales_layout.addWidget(spin, row, 1)
+
+        page_layout.addWidget(scales_group)
+
+        # Camera alignment only moves the overlay.
+        self.camera_centre_x_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+        self.camera_centre_y_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+
+        # Scale changes immediately rebuild and send the current SLM payload.
+        for spin in (
+            self.slm_x_scale_spin,
+            self.slm_y_scale_spin,
+            self.slm_z_scale_spin,
+        ):
+            spin.valueChanged.connect(lambda _value: self._on_slm_scale_changed())
+
         return page
     
     def setup_exposure_slider(self):

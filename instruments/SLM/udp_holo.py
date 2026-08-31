@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence, Tuple, Optional
 import logging
+import math
 import socket
 
 logger = logging.getLogger(__name__)
@@ -225,6 +226,23 @@ DEFAULT_WINDOW_RECT: Tuple[int, int, int, int] = (2560, 0, 512, 512)
 X_SCALE: float = -1.84e-5
 Y_SCALE: float = 1.86e-5
 Z_SCALE: float = -1.631e-5
+
+
+def get_coordinate_scales() -> Tuple[float, float, float]:
+    """Return the active X, Y, and Z SLM coordinate scale factors."""
+
+    return X_SCALE, Y_SCALE, Z_SCALE
+
+
+def set_coordinate_scales(x_scale: float, y_scale: float, z_scale: float) -> None:
+    """Set the scale factors used when converting traps for the SLM."""
+
+    scales = (float(x_scale), float(y_scale), float(z_scale))
+    if not all(math.isfinite(value) for value in scales):
+        raise ValueError("SLM coordinate scales must be finite numbers")
+
+    global X_SCALE, Y_SCALE, Z_SCALE
+    X_SCALE, Y_SCALE, Z_SCALE = scales
 
 
 def build_message_from_traps(traps: Iterable[Mapping[str, float]]) -> UdpHoloMessage:
