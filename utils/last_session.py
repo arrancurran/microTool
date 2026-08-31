@@ -22,8 +22,8 @@ def _safe_getattr(obj: Any, name: str) -> Any:
 def save_last_session(window: Any, camera_control: Any) -> None:
     """Persist front-panel settings to last_session.json.
 
-    Captures ROI spinboxes, exposure, and experiment settings from the
-    Acquisition Settings group so they can be restored on the next run.
+    Captures ROI spinboxes, exposure, SLM centre alignment, and experiment
+    settings so they can be restored on the next run.
     """
 
     data: Dict[str, Any] = {}
@@ -68,6 +68,30 @@ def save_last_session(window: Any, camera_control: Any) -> None:
             data["exposure_us"] = float(exposure_value)
         except Exception:
             pass
+
+    # --- SLM centre / camera overlay alignment ---
+    slm_centre: Dict[str, float] = {}
+    for axis in ("x", "y"):
+        spin = _safe_getattr(window, f"camera_centre_{axis}_spin")
+        if spin is not None:
+            try:
+                slm_centre[axis] = float(spin.value())
+            except Exception as e:
+                logger.error(f"Error reading SLM centre {axis}: {e}")
+    if slm_centre:
+        data["slm_centre"] = slm_centre
+
+    # --- SLM coordinate scaling ---
+    slm_scales: Dict[str, float] = {}
+    for axis in ("x", "y", "z"):
+        spin = _safe_getattr(window, f"slm_{axis}_scale_spin")
+        if spin is not None:
+            try:
+                slm_scales[axis] = float(spin.value())
+            except Exception as e:
+                logger.error(f"Error reading SLM {axis.upper()} scale: {e}")
+    if slm_scales:
+        data["slm_scales"] = slm_scales
 
     # --- Experiment / acquisition settings ---
     experiment: Dict[str, Any] = {}
@@ -163,6 +187,46 @@ def load_last_session(window: Any, camera_control: Any) -> None:
                 camera_control.call_camera_command("exposure", "set", float(exposure_val))
             except Exception as e:
                 logger.error(f"Error restoring exposure on camera: {e}")
+
+    # --- SLM centre / camera overlay alignment restore ---
+    slm_centre = data.get("slm_centre", {}) or {}
+    for axis in ("x", "y"):
+        if axis not in slm_centre:
+            continue
+        spin = _safe_getattr(window, f"camera_centre_{axis}_spin")
+        if spin is not None:
+            try:
+                spin.setValue(float(slm_centre[axis]))
+            except (TypeError, ValueError) as e:
+                logger.error(f"Error restoring SLM centre {axis}: {e}")
+
+    # --- SLM coordinate scaling restore ---
+    slm_scales = data.get("slm_scales", {}) or {}
+    restored_slm_scale = False
+    for axis in ("x", "y", "z"):
+        if axis not in slm_scales:
+            continue
+        spin = _safe_getattr(window, f"slm_{axis}_scale_spin")
+        if spin is not None:
+            signals_were_blocked = None
+            try:
+                if hasattr(spin, "blockSignals"):
+                    signals_were_blocked = spin.blockSignals(True)
+                spin.setValue(float(slm_scales[axis]))
+                restored_slm_scale = True
+            except (TypeError, ValueError) as e:
+                logger.error(f"Error restoring SLM {axis.upper()} scale: {e}")
+            finally:
+                if signals_were_blocked is not None:
+                    spin.blockSignals(signals_were_blocked)
+
+    # Apply all three restored values atomically and send one updated payload.
+    apply_slm_calibration = _safe_getattr(window, "_on_slm_scale_changed")
+    if restored_slm_scale and callable(apply_slm_calibration):
+        try:
+            apply_slm_calibration()
+        except Exception as e:
+            logger.error(f"Error applying restored SLM scales: {e}")
 
     # --- Experiment / acquisition settings restore ---
     experiment = data.get("experiment", {}) or {}

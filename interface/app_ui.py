@@ -1,6 +1,7 @@
 
 # Create all the UI elements and set their layout and properties
-import json, os
+import json, os, logging
+import math
 import pyqtgraph as pg  
 import qtawesome as qta
 
@@ -21,13 +22,22 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QComboBox,
     QDoubleSpinBox,
+    QTabWidget,
 )
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
-from instruments.SLM.udp_holo import send_traps
+from instruments.SLM.udp_holo import (
+    get_coordinate_scales,
+    send_traps,
+    set_coordinate_scales,
+)
+
+logger = logging.getLogger(__name__)
+
+CAMERA_PIXELS_PER_UM = 12.18
 
 # Inherit from QMainWindow so ui is our main window
 class AppUI(QMainWindow):
@@ -81,7 +91,9 @@ class AppUI(QMainWindow):
         """Update the currently-selected trap dict when a parameter changes."""
 
         idx = self._current_optical_trap_index()
+        logger.debug(f"Spin changed: idx={idx}, param={param_key}, value={value}")
         if idx < 0 or idx >= len(self.optical_traps):
+            logger.debug("Ignoring change: no valid trap selected.")
             return
         self.optical_traps[idx][param_key] = float(value)
 
@@ -103,10 +115,10 @@ class AppUI(QMainWindow):
             self.optical_traps = []
 
         default_trap = {
-            "intensity": 1.0,
             "x": 0.0,
             "y": 0.0,
             "z": 0.0,
+            "intensity": 1.0,
             "vortex": 0.0,
             "phase": 0.0,
         }
@@ -146,6 +158,104 @@ class AppUI(QMainWindow):
         # Notify SLM after removing a spot.
         self._send_optical_traps_to_slm()
 
+    def _replace_optical_traps(self, traps):
+        """Replace every spot, refresh the selector, and send one update."""
+
+        if not traps:
+            return
+
+        self.optical_traps = traps
+
+        signals_were_blocked = self.optical_trap_selector.blockSignals(True)
+        try:
+            self.optical_trap_selector.clear()
+            self.optical_trap_selector.addItems(
+                f"Spot {index + 1}" for index in range(len(traps))
+            )
+            self.optical_trap_selector.setCurrentIndex(0)
+        finally:
+            self.optical_trap_selector.blockSignals(signals_were_blocked)
+
+        self._apply_optical_trap_to_widgets(self.optical_traps[0])
+        self._send_optical_traps_to_slm()
+
+    def _create_circular_pattern(self):
+        """Create equally spaced spots around the configured circle."""
+
+        spot_count = self.pattern_spot_count_spin.value()
+        radius = self.pattern_radius_spin.value()
+        origin_x = self.pattern_origin_x_spin.value()
+        origin_y = self.pattern_origin_y_spin.value()
+
+        traps = []
+        for index in range(spot_count):
+            angle = math.tau * index / spot_count
+            traps.append({
+                "x": round(origin_x + radius * math.cos(angle), 12),
+                "y": round(origin_y + radius * math.sin(angle), 12),
+                "z": 0.0,
+                "intensity": 1.0,
+                "vortex": 0.0,
+                "phase": 0.0,
+            })
+
+        self._replace_optical_traps(traps)
+        self.status_bar.showMessage(
+            f"Created {spot_count} spots on a circle of radius {radius:g}",
+            3000,
+        )
+
+    def _on_pattern_parameter_changed(self):
+        """Regenerate the circular pattern after any pattern input changes."""
+
+        self._update_pattern_radius_limit()
+        self._create_circular_pattern()
+
+    def _schedule_pattern_update(self):
+        """Debounce edits while a pattern value is being typed."""
+
+        if self._pattern_update_in_progress:
+            return
+        self._pattern_update_timer.start()
+
+    def _apply_pattern_update(self):
+        """Commit pending editor text and regenerate the pattern once."""
+
+        if self._pattern_update_in_progress:
+            return
+
+        self._pattern_update_timer.stop()
+        self._pattern_update_in_progress = True
+        try:
+            # QSpinBox/QDoubleSpinBox can display newly typed text before their
+            # value() has been committed. Explicit interpretation makes the
+            # automatic update use exactly what is visible in every field.
+            for parameter in self._pattern_parameters:
+                parameter.interpretText()
+            self._on_pattern_parameter_changed()
+        finally:
+            self._pattern_update_in_progress = False
+
+    def _update_pattern_radius_limit(self):
+        """Keep the generated circle inside the Spots-tab X/Y ranges."""
+
+        origin_x = self.pattern_origin_x_spin.value()
+        origin_y = self.pattern_origin_y_spin.value()
+        maximum_radius = min(
+            origin_x - self.trap_x_spin.minimum(),
+            self.trap_x_spin.maximum() - origin_x,
+            origin_y - self.trap_y_spin.minimum(),
+            self.trap_y_spin.maximum() - origin_y,
+        )
+        # Updating the maximum can clamp the current radius and emit another
+        # valueChanged signal. Block that nested signal because the caller will
+        # regenerate the pattern once after the limit has been applied.
+        signals_were_blocked = self.pattern_radius_spin.blockSignals(True)
+        try:
+            self.pattern_radius_spin.setMaximum(max(0.0, maximum_radius))
+        finally:
+            self.pattern_radius_spin.blockSignals(signals_were_blocked)
+
     def _send_optical_traps_to_slm(self):
         """Send the current optical trap configuration to the SLM via UDP.
 
@@ -156,13 +266,22 @@ class AppUI(QMainWindow):
         if not hasattr(self, "optical_traps"):
             return
 
+        # The noCam backend exposes set_spots(); real camera controllers do
+        # not, so this has no effect on the Ximea path.
+        ui_methods = getattr(self, "ui_methods", None)
+        camera_control = getattr(ui_methods, "camera_control", None)
+        update_mock_spots = getattr(camera_control, "set_spots", None)
+        if callable(update_mock_spots):
+            try:
+                update_mock_spots(self.optical_traps)
+            except Exception as e:
+                logger.error(f"Error updating noCam hologram spots: {e}")
+
         try:
             # send_traps knows how to map the generic dicts into the
             # UdpHoloMessage structure.
+            logger.debug(f"Sending {len(self.optical_traps)} trap(s) to SLM: {self.optical_traps}")
             send_traps(self.optical_traps)
-            # Also update camera spot markers, if the main UI has
-            # access to UIMethods and a camera image size.
-            self._update_spot_markers_on_camera()
         except Exception as e:
             # Log errors but avoid crashing the UI if the SLM is
             # unreachable.
@@ -170,12 +289,16 @@ class AppUI(QMainWindow):
 
             logging.getLogger(__name__).error(f"Error sending traps to SLM: {e}")
 
+        # Camera overlays and the mock hologram should still update if the SLM
+        # UDP endpoint is unavailable.
+        self._update_spot_markers_on_camera()
+
     def _update_spot_markers_on_camera(self):
         """Project optical trap positions onto the camera image.
 
-        Uses a fixed scale of 12.18 pixels/µm and treats (x, y) = (0, 0)
-        as the centre of the camera image. +x is to the right; +y is up
-        (so image y is inverted).
+        The camera-centre controls specify which trap-space coordinate lies
+        at the centre of the displayed camera image. +x is to the right; +y
+        is up (so image y is inverted).
         """
 
         # UIMethods is attached by app.py after construction.
@@ -194,10 +317,11 @@ class AppUI(QMainWindow):
             return
 
         width, height = image_display.original_image_size
-        cx = width / 2.0
-        cy = height / 2.0
+        image_centre_x = width / 2.0
+        image_centre_y = height / 2.0
 
-        px_per_um = 12.18
+        camera_centre_x = self.camera_centre_x_spin.value()
+        camera_centre_y = self.camera_centre_y_spin.value()
 
         spots_px = []
         for t in self.optical_traps:
@@ -207,13 +331,27 @@ class AppUI(QMainWindow):
             except (TypeError, ValueError):
                 continue
 
-            x_px = cx + x_um * px_per_um
+            x_px = image_centre_x + (
+                x_um - camera_centre_x
+            ) * CAMERA_PIXELS_PER_UM
             # Invert y so +y in trap space is upwards on the image.
-            y_px = cy - y_um * px_per_um
+            y_px = image_centre_y - (
+                y_um - camera_centre_y
+            ) * CAMERA_PIXELS_PER_UM
 
             spots_px.append((x_px, y_px))
 
         ui_methods.set_spot_positions(spots_px)
+
+    def _on_slm_scale_changed(self):
+        """Apply calibration scale factors and refresh the SLM payload."""
+
+        set_coordinate_scales(
+            self.slm_x_scale_spin.value(),
+            self.slm_y_scale_spin.value(),
+            self.slm_z_scale_spin.value(),
+        )
+        self._send_optical_traps_to_slm()
     
     def load_ui_scaffolding(self, file_path):
         with open(os.path.join('interface', file_path), 'r') as f:
@@ -431,7 +569,7 @@ class AppUI(QMainWindow):
         rows_and_spins.append(make_param_row("X:", "trap_x_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Y:", "trap_y_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Z:", "trap_z_spin", -100.0, 100.0, 0.1))
-        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -10.0, 10.0, 0.1))
+        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -100.0, 100.0, 1.0))
         rows_and_spins.append(make_param_row("Phase:", "trap_phase_spin", 0.0, 360.0, 1.0, decimals=1))
 
         for row, _spin in rows_and_spins:
@@ -465,6 +603,177 @@ class AppUI(QMainWindow):
         self._add_optical_trap()
 
         return group
+
+    def setup_slm_control_tabs(self):
+        """Create tabbed controls for SLM spots, patterns, and calibration."""
+
+        self.slm_control_tabs = QTabWidget()
+        self.slm_control_tabs.setObjectName("slm_control_tabs")
+
+        self.spots_tab = self.setup_optical_trap_controls()
+
+        self.patterns_control = self.setup_pattern_controls()
+        self.calibration_control = self.setup_calibration_controls()
+
+        self.slm_control_tabs.addTab(self.spots_tab, "Spots")
+        self.slm_control_tabs.addTab(self.patterns_control, "Patterns")
+        self.slm_control_tabs.addTab(self.calibration_control, "Calibration")
+
+        return self.slm_control_tabs
+
+    def setup_pattern_controls(self):
+        """Create controls for an equally spaced circular spot pattern."""
+
+        page = QWidget()
+        page.setObjectName("patterns_control")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 8, 8, 8)
+        page_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        group = QGroupBox("Circular Spot Pattern")
+        layout = QGridLayout(group)
+
+        self.pattern_spot_count_spin = QSpinBox()
+        self.pattern_spot_count_spin.setRange(1, 100)
+        self.pattern_spot_count_spin.setValue(8)
+        self.pattern_spot_count_spin.setToolTip(
+            "Number of spots distributed evenly around the circle"
+        )
+
+        self.pattern_radius_spin = QDoubleSpinBox()
+        self.pattern_radius_spin.setRange(0.0, 100.0)
+        self.pattern_radius_spin.setDecimals(3)
+        self.pattern_radius_spin.setSingleStep(0.1)
+        self.pattern_radius_spin.setValue(10.0)
+        self.pattern_radius_spin.setToolTip("Circle radius in trap-coordinate units")
+
+        self.pattern_origin_x_spin = QDoubleSpinBox()
+        self.pattern_origin_x_spin.setRange(
+            self.trap_x_spin.minimum(), self.trap_x_spin.maximum()
+        )
+        self.pattern_origin_x_spin.setDecimals(3)
+        self.pattern_origin_x_spin.setSingleStep(0.1)
+        self.pattern_origin_x_spin.setToolTip("X coordinate of the circle centre")
+
+        self.pattern_origin_y_spin = QDoubleSpinBox()
+        self.pattern_origin_y_spin.setRange(
+            self.trap_y_spin.minimum(), self.trap_y_spin.maximum()
+        )
+        self.pattern_origin_y_spin.setDecimals(3)
+        self.pattern_origin_y_spin.setSingleStep(0.1)
+        self.pattern_origin_y_spin.setToolTip("Y coordinate of the circle centre")
+
+        layout.addWidget(QLabel("Number of spots (N):"), 0, 0)
+        layout.addWidget(self.pattern_spot_count_spin, 0, 1)
+        layout.addWidget(QLabel("Radius (r):"), 1, 0)
+        layout.addWidget(self.pattern_radius_spin, 1, 1)
+        layout.addWidget(QLabel("Origin X:"), 2, 0)
+        layout.addWidget(self.pattern_origin_x_spin, 2, 1)
+        layout.addWidget(QLabel("Origin Y:"), 3, 0)
+        layout.addWidget(self.pattern_origin_y_spin, 3, 1)
+
+        self._pattern_parameters = (
+            self.pattern_spot_count_spin,
+            self.pattern_radius_spin,
+            self.pattern_origin_x_spin,
+            self.pattern_origin_y_spin,
+        )
+
+        self._pattern_update_in_progress = False
+        self._pattern_update_timer = QTimer(self)
+        self._pattern_update_timer.setSingleShot(True)
+        self._pattern_update_timer.setInterval(200)
+        self._pattern_update_timer.timeout.connect(self._apply_pattern_update)
+
+        self.pattern_create_button = QPushButton("Create pattern")
+        self.pattern_create_button.clicked.connect(self._apply_pattern_update)
+        layout.addWidget(self.pattern_create_button, 4, 0, 1, 2)
+
+        for parameter in self._pattern_parameters:
+            parameter.textChanged.connect(
+                lambda _text: self._schedule_pattern_update()
+            )
+
+        self._update_pattern_radius_limit()
+
+        page_layout.addWidget(group)
+        return page
+
+    def setup_calibration_controls(self):
+        """Create camera-overlay and SLM coordinate calibration controls."""
+
+        page = QWidget()
+        page.setObjectName("calibration_control")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 8, 8, 8)
+        page_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        camera_group = QGroupBox("Camera Overlay Alignment")
+        camera_layout = QGridLayout(camera_group)
+
+        self.camera_centre_x_spin = QDoubleSpinBox()
+        self.camera_centre_x_spin.setRange(-100.0, 100.0)
+        self.camera_centre_x_spin.setSingleStep(0.1)
+        self.camera_centre_x_spin.setDecimals(3)
+        self.camera_centre_x_spin.setToolTip(
+            "Trap X coordinate located at the centre of the camera image"
+        )
+
+        self.camera_centre_y_spin = QDoubleSpinBox()
+        self.camera_centre_y_spin.setRange(-100.0, 100.0)
+        self.camera_centre_y_spin.setSingleStep(0.1)
+        self.camera_centre_y_spin.setDecimals(3)
+        self.camera_centre_y_spin.setToolTip(
+            "Trap Y coordinate located at the centre of the camera image"
+        )
+
+        camera_layout.addWidget(QLabel("Camera centre X (µm):"), 0, 0)
+        camera_layout.addWidget(self.camera_centre_x_spin, 0, 1)
+        camera_layout.addWidget(QLabel("Camera centre Y (µm):"), 1, 0)
+        camera_layout.addWidget(self.camera_centre_y_spin, 1, 1)
+        page_layout.addWidget(camera_group)
+
+        scales_group = QGroupBox("SLM Coordinate Scaling")
+        scales_layout = QGridLayout(scales_group)
+        x_scale, y_scale, z_scale = get_coordinate_scales()
+
+        scale_controls = (
+            ("X_SCALE:", "slm_x_scale_spin", x_scale),
+            ("Y_SCALE:", "slm_y_scale_spin", y_scale),
+            ("Z_SCALE:", "slm_z_scale_spin", z_scale),
+        )
+        for row, (label, attr_name, value) in enumerate(scale_controls):
+            spin = QDoubleSpinBox()
+            spin.setRange(-1.0, 1.0)
+            spin.setDecimals(10)
+            spin.setSingleStep(0.0000001)
+            spin.setValue(value)
+            spin.setToolTip(
+                "Multiplier applied to this trap coordinate before sending it to the SLM"
+            )
+            setattr(self, attr_name, spin)
+            scales_layout.addWidget(QLabel(label), row, 0)
+            scales_layout.addWidget(spin, row, 1)
+
+        page_layout.addWidget(scales_group)
+
+        # Camera alignment only moves the overlay.
+        self.camera_centre_x_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+        self.camera_centre_y_spin.valueChanged.connect(
+            lambda _value: self._update_spot_markers_on_camera()
+        )
+
+        # Scale changes immediately rebuild and send the current SLM payload.
+        for spin in (
+            self.slm_x_scale_spin,
+            self.slm_y_scale_spin,
+            self.slm_z_scale_spin,
+        ):
+            spin.valueChanged.connect(lambda _value: self._on_slm_scale_changed())
+
+        return page
     
     def setup_exposure_slider(self):
         # Container so slider and label can sit side by side
@@ -488,8 +797,8 @@ class AppUI(QMainWindow):
         controls_narrow_layout = QVBoxLayout(controls_narrow)
         
         controls_narrow_layout.addWidget(self.setup_roi())
-        # Optical trap controls
-        controls_narrow_layout.addWidget(self.setup_optical_trap_controls())
+        # SLM spot and pattern controls
+        controls_narrow_layout.addWidget(self.setup_slm_control_tabs())
         # Experiment / time-series configuration controls
         controls_narrow_layout.addWidget(self.setup_experiment_controls())
         return controls_narrow

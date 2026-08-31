@@ -31,6 +31,20 @@ microTool is a Python application in development.
    - For macOS ARM: Download xiAPI LTS V4.28.00 or later
    - Follow platform-specific installation instructions
 
+5. **Run the application:**
+
+   With the Ximea camera (the default):
+
+   ```bash
+   python app.py
+   ```
+
+   Or without camera hardware, using the mock `noCam` backend:
+
+   ```bash
+   python app.py --camera nocam
+   ```
+
 ## Contributing
 
 1. Fork the repository

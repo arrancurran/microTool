@@ -5,7 +5,8 @@
         {"cmd": "width", "type": "int", "name": "width"},
         {"cmd": "height", "type": "int", "name": "height"},
         {"cmd": "offsetX", "type": "int", "name": "offset_x"},
-        {"cmd": "offsetY", "type": "int", "name": "offset_y"}
+        {"cmd": "offsetY", "type": "int", "name": "offset_y"},
+        {"cmd": "debug_level", "type": "str", "name": "debug_level"}
     ],
     "get": [
         {"cmd": "device_name", "type": "str", "name": "device_name"},
@@ -34,6 +35,7 @@
         {"cmd": "offsetX_increment", "type": "int", "name": "offset_x_inc"},
         {"cmd": "offsetY_minimum", "type": "int", "name": "offset_y_min"},
         {"cmd": "offsetY_maximum", "type": "int", "name": "offset_y_max"},
-        {"cmd": "offsetY_increment", "type": "int", "name": "offset_y_inc"}
+        {"cmd": "offsetY_increment", "type": "int", "name": "offset_y_inc"},
+        {"cmd": "debug_level", "type": "str", "name": "debug_level"}
     ]
 }
