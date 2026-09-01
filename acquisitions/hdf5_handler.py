@@ -6,6 +6,8 @@ from interface.status_bar.update_notif import update_notif, clear_notif
 
 logger = logging.getLogger(__name__)
 
+SLM_SPOT_FIELDS = ("x", "y", "z", "intensity", "vortex", "phase")
+
 class HDF5Handler:
     
     def __init__(self):
@@ -51,6 +53,45 @@ class HDF5Handler:
             self.create_hdf5.flush()
         except Exception as e:
             logger.error(f"Error updating HDF5 metadata: {e}")
+
+    def set_slm_spots(self, spots) -> bool:
+        """Store an acquisition-start snapshot of all SLM spots."""
+
+        if not self.create_hdf5:
+            return False
+
+        try:
+            spots = list(spots or [])
+            spot_dtype = np.dtype(
+                [(field, np.float64) for field in SLM_SPOT_FIELDS]
+            )
+            spot_data = np.zeros(len(spots), dtype=spot_dtype)
+            defaults = {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "intensity": 1.0,
+                "vortex": 0.0,
+                "phase": 0.0,
+            }
+
+            for index, spot in enumerate(spots):
+                for field in SLM_SPOT_FIELDS:
+                    spot_data[index][field] = float(
+                        spot.get(field, defaults[field])
+                    )
+
+            if "optical traps" in self.create_hdf5:
+                del self.create_hdf5["optical traps"]
+            dataset = self.create_hdf5.create_dataset("optical traps", data=spot_data)
+            dataset.attrs["description"] = (
+                "Optical traps when acquisition started"
+            )
+            self.create_hdf5.flush()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving SLM spots to HDF5: {e}")
+            return False
     
     def init_saving_thread(self, queue):
         if self.is_saving:
@@ -255,4 +296,4 @@ class HDF5Handler:
                 self.create_hdf5 = None
                 self.dataset = None
                 self.timestamps = None
-                self.frame_count = 0 
+                self.frame_count = 0
