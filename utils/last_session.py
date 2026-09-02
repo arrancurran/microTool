@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 _BASE_DIR = Path(__file__).resolve().parent.parent
 _SESSION_PATH = _BASE_DIR / "last_session.json"
 
+_SPOT_DEFAULTS = {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "intensity": 1.0,
+    "vortex": 0.0,
+    "phase": 0.0,
+}
+
 
 def _safe_getattr(obj: Any, name: str) -> Any:
     """Return getattr(obj, name) or None if missing.
@@ -17,6 +26,29 @@ def _safe_getattr(obj: Any, name: str) -> Any:
         return getattr(obj, name)
     except AttributeError:
         return None
+
+
+def _normalise_spots(spots: Any) -> list[dict[str, float]]:
+    """Return JSON-safe spot dictionaries using the supported parameters."""
+
+    if not isinstance(spots, (list, tuple)):
+        return []
+
+    normalised = []
+    for index, spot in enumerate(spots):
+        if not isinstance(spot, dict):
+            logger.warning(f"Ignoring invalid spot {index} in session data")
+            continue
+        try:
+            normalised.append(
+                {
+                    key: float(spot.get(key, default))
+                    for key, default in _SPOT_DEFAULTS.items()
+                }
+            )
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Ignoring invalid spot {index} in session data: {e}")
+    return normalised
 
 
 def save_last_session(window: Any, camera_control: Any) -> None:
@@ -92,6 +124,11 @@ def save_last_session(window: Any, camera_control: Any) -> None:
                 logger.error(f"Error reading SLM {axis.upper()} scale: {e}")
     if slm_scales:
         data["slm_scales"] = slm_scales
+
+    # --- Optical trap spots ---
+    spots = _normalise_spots(_safe_getattr(window, "optical_traps"))
+    if spots:
+        data["optical_traps"] = spots
 
     # --- Experiment / acquisition settings ---
     experiment: Dict[str, Any] = {}
@@ -227,6 +264,15 @@ def load_last_session(window: Any, camera_control: Any) -> None:
             apply_slm_calibration()
         except Exception as e:
             logger.error(f"Error applying restored SLM scales: {e}")
+
+    # --- Optical trap spots restore ---
+    spots = _normalise_spots(data.get("optical_traps"))
+    replace_spots = _safe_getattr(window, "_replace_optical_traps")
+    if spots and callable(replace_spots):
+        try:
+            replace_spots(spots)
+        except Exception as e:
+            logger.error(f"Error restoring optical trap spots: {e}")
 
     # --- Experiment / acquisition settings restore ---
     experiment = data.get("experiment", {}) or {}

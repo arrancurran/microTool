@@ -100,6 +100,10 @@ class SimpleTimeSeries:
             if not self.h5_handler.init_h5File(path=path):
                 raise Exception("Failed to create HDF5 file for time series")
 
+            self.h5_handler.set_slm_spots(
+                list(getattr(self.window, "optical_traps", []))
+            )
+
             initial_metadata = build_metadata(
                 acquisition_type="Time Series",
                 window=self.window,
