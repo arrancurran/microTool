@@ -297,8 +297,9 @@ class AppUI(QMainWindow):
         """Project optical trap positions onto the camera image.
 
         The camera-centre controls specify which trap-space coordinate lies
-        at the centre of the displayed camera image. +x is to the right; +y
-        is up (so image y is inverted).
+        at the centre of the full camera sensor. The resulting sensor
+        coordinates are translated into the current ROI. +x is to the right;
+        +y is up (so image y is inverted).
         """
 
         # UIMethods is attached by app.py after construction.
@@ -316,9 +317,41 @@ class AppUI(QMainWindow):
             # No image yet; nothing to draw.
             return
 
-        width, height = image_display.original_image_size
-        image_centre_x = width / 2.0
-        image_centre_y = height / 2.0
+        roi_width, roi_height = image_display.original_image_size
+        roi_offset_x = self.roi_offset_x.value()
+        roi_offset_y = self.roi_offset_y.value()
+
+        # ROIControl caches the absolute sensor dimensions when it is
+        # initialized. Prefer those values because the current frame size is
+        # only the cropped ROI, not the full sensor.
+        sensor_width = None
+        sensor_height = None
+        control_manager = getattr(ui_methods, "control_manager", None)
+        roi_control = getattr(control_manager, "controls", {}).get("roi")
+        max_dimensions = getattr(roi_control, "max_dimensions", None)
+        if isinstance(max_dimensions, dict):
+            sensor_width = max_dimensions.get("width")
+            sensor_height = max_dimensions.get("height")
+
+        # Fall back to the ROI widgets, which ROIControl configures with the
+        # camera maxima. Including the visible ROI extent keeps the fallback
+        # valid during startup and intermediate control updates.
+        try:
+            sensor_width = max(
+                float(sensor_width or 0),
+                float(self.roi_width.maximum()),
+                float(roi_offset_x + roi_width),
+            )
+            sensor_height = max(
+                float(sensor_height or 0),
+                float(self.roi_height.maximum()),
+                float(roi_offset_y + roi_height),
+            )
+        except (TypeError, ValueError):
+            return
+
+        sensor_centre_x = sensor_width / 2.0
+        sensor_centre_y = sensor_height / 2.0
 
         camera_centre_x = self.camera_centre_x_spin.value()
         camera_centre_y = self.camera_centre_y_spin.value()
@@ -331,15 +364,21 @@ class AppUI(QMainWindow):
             except (TypeError, ValueError):
                 continue
 
-            x_px = image_centre_x + (
+            sensor_x = sensor_centre_x + (
                 x_um - camera_centre_x
             ) * CAMERA_PIXELS_PER_UM
             # Invert y so +y in trap space is upwards on the image.
-            y_px = image_centre_y - (
+            sensor_y = sensor_centre_y - (
                 y_um - camera_centre_y
             ) * CAMERA_PIXELS_PER_UM
 
-            spots_px.append((x_px, y_px))
+            roi_x = sensor_x - roi_offset_x
+            roi_y = sensor_y - roi_offset_y
+
+            # Do not draw annotations in the letterbox area when their spots
+            # lie outside the cropped camera frame.
+            if 0.0 <= roi_x < roi_width and 0.0 <= roi_y < roi_height:
+                spots_px.append((roi_x, roi_y))
 
         ui_methods.set_spot_positions(spots_px)
 
@@ -716,7 +755,7 @@ class AppUI(QMainWindow):
         self.camera_centre_x_spin.setSingleStep(0.1)
         self.camera_centre_x_spin.setDecimals(3)
         self.camera_centre_x_spin.setToolTip(
-            "Trap X coordinate located at the centre of the camera image"
+            "Trap X coordinate located at the centre of the full camera sensor"
         )
 
         self.camera_centre_y_spin = QDoubleSpinBox()
@@ -724,7 +763,7 @@ class AppUI(QMainWindow):
         self.camera_centre_y_spin.setSingleStep(0.1)
         self.camera_centre_y_spin.setDecimals(3)
         self.camera_centre_y_spin.setToolTip(
-            "Trap Y coordinate located at the centre of the camera image"
+            "Trap Y coordinate located at the centre of the full camera sensor"
         )
 
         camera_layout.addWidget(QLabel("Camera centre X (µm):"), 0, 0)

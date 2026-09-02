@@ -62,6 +62,18 @@ class UIDisplayMethods:
                 scaled_image.width(), scaled_image.height(),
                 width, height
             )
+
+            # A new ROI shape changes the image-coordinate system used by the
+            # annotations. Refresh before drawing so the current frame gets
+            # the corrected marker positions immediately.
+            image_size = (width, height)
+            if self.original_image_size != image_size:
+                self.original_image_size = image_size
+                marker_updater = getattr(
+                    self.window, "_update_spot_markers_on_camera", None
+                )
+                if callable(marker_updater):
+                    marker_updater()
             
             # Create a new pixmap for drawing ROIs
             final_image = QPixmap(container_size)
@@ -78,7 +90,6 @@ class UIDisplayMethods:
             painter.end()
             
             self.window.image_container.setPixmap(final_image)
-            self.original_image_size = (width, height)
 
             self.window.histogram_plot.update(np_image_data)
 

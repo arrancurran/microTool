@@ -33,6 +33,18 @@ class UIMethods(QObject):
         """Initialize camera controls"""
         self.control_manager = CameraControlManager(self.camera_control, window)
         self.control_manager.initialize_controls()
+
+        # ROIControl owns the camera updates and connects its signals during
+        # initialization above. Connect the marker refresh afterwards so each
+        # new ROI value is projected using the final control state.
+        marker_updater = getattr(self.window, "_update_spot_markers_on_camera", None)
+        if callable(marker_updater):
+            for name in ("roi_width", "roi_height", "roi_offset_x", "roi_offset_y"):
+                spin = getattr(self.window, name, None)
+                if spin is not None:
+                    spin.valueChanged.connect(
+                        lambda _value, update=marker_updater: update()
+                    )
         
         """Initialize status bar manager"""
         self.status_bar_manager = StatusBarManager(window, self.camera_control)
