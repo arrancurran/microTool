@@ -39,6 +39,7 @@ class microTool():
     def __init__(self, camera_backend="xicam", qt_args=None):
         # Passing sys.argv so any command-line arguments are forwarded. 
         self.app = QApplication(qt_args if qt_args is not None else sys.argv)
+        self.app.aboutToQuit.connect(close_udp_client)
         self.window = AppUI()
                 
         """Camera Control"""
@@ -50,6 +51,9 @@ class microTool():
        
         """UI Methods"""
         self.ui_methods = UIMethods(self.window, self.stream_camera)
+        self.app.aboutToQuit.disconnect(self.window.piezo_control.shutdown)
+        self.app.aboutToQuit.connect(self.ui_methods.z_scan.shutdown)
+        self.app.aboutToQuit.connect(self.window.piezo_control.shutdown)
         # Expose ui_methods on the window so AppUI helpers can
         # access it (e.g. to update spot markers on the camera view).
         self.window.ui_methods = self.ui_methods
@@ -90,6 +94,7 @@ class microTool():
         
     def cleanup(self, event):
         try:
+            self.ui_methods.z_scan.shutdown()
             # Persist front-panel settings for the next run
             try:
                 save_last_session(self.window, self.camera_control)
@@ -106,6 +111,9 @@ class microTool():
         except Exception as e:
             logging.error(f"Error during cleanup: {e}")
             event.accept()
+        finally:
+            self.window.piezo_control.shutdown()
+            close_udp_client()
         
     def __del__(self):
         """Backup cleanup method, but closeEvent handler is the primary cleanup method"""

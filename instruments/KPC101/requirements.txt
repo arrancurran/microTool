@@ -1,0 +1,3 @@
+PyQt6>=6.8.1
+# Hardware also requires the Thorlabs Kinesis Windows installation and USB drivers.
+# The controller module itself uses only Python's standard library.

@@ -10,7 +10,6 @@ from typing import Any
 
 import numpy as np
 
-from .hologram import calculate_hologram
 
 
 class NoImage:
@@ -45,19 +44,7 @@ class NoCam:
         self._is_open = False
         self._is_running = False
         self._last_frame_time = 0.0
-        self._spots: list[dict[str, float]] = [
-            {
-                "x": 0.0,
-                "y": 0.0,
-                "z": 0.0,
-                "intensity": 1.0,
-                "vortex": 0.0,
-                "phase": 0.0,
-            }
-        ]
-        self._hologram: np.ndarray | None = None
-        self._hologram_revision = 0
-        self._rendered_revision = -1
+        self._frame: np.ndarray | None = None
 
     def open_device(self) -> bool:
         self._is_open = True
@@ -88,22 +75,11 @@ class NoCam:
         if now - self._last_frame_time < frame_time:
             return False
 
-        revision = self._hologram_revision
-        if self._hologram is None or self._rendered_revision != revision:
-            hologram = calculate_hologram(
-                self._spots,
-                width=self.width,
-                height=self.height,
-            )
-            # Do not mark a stale calculation as current if the UI supplied new
-            # spots while this frame was being rendered.
-            if revision == self._hologram_revision:
-                self._hologram = hologram
-                self._rendered_revision = revision
-        else:
-            hologram = self._hologram
-
-        image.set_image_data_numpy(hologram)
+        # The mock camera supplies a blank frame; the external engine alone
+        # calculates holograms from the UDP messages.
+        if self._frame is None or self._frame.shape != (self.height, self.width):
+            self._frame = np.zeros((self.height, self.width), dtype=np.uint8)
+        image.set_image_data_numpy(self._frame)
         image.tsSec = int(now)
         image.tsUSec = int((now % 1) * 1_000_000)
         self._last_frame_time = now
@@ -111,13 +87,6 @@ class NoCam:
 
     def get_device_name(self) -> bytes:
         return b"noCam"
-
-    def set_spots(self, spots: list[dict[str, float]]) -> None:
-        """Store a snapshot of the traps used for the next mock frame."""
-
-        self._spots = [dict(spot) for spot in spots]
-        self._hologram_revision += 1
-        self._last_frame_time = 0.0
 
     def get_device_model_id(self) -> int:
         return 0
@@ -162,7 +131,6 @@ class NoCam:
 
     def set_width(self, value: int) -> bool:
         self.width = int(value)
-        self._hologram_revision += 1
         self._last_frame_time = 0.0
         return True
 
@@ -180,7 +148,6 @@ class NoCam:
 
     def set_height(self, value: int) -> bool:
         self.height = int(value)
-        self._hologram_revision += 1
         self._last_frame_time = 0.0
         return True
 
@@ -321,12 +288,6 @@ class CameraControl:
         if self.image is not None:
             return self.image.tsSec + self.image.tsUSec / 1_000_000
         return None
-
-    def set_spots(self, spots: list[dict[str, float]]) -> None:
-        """Update the traps rendered by subsequent mock camera frames."""
-
-        if self.camera is not None:
-            self.camera.set_spots(spots)
 
     def stop_camera(self) -> None:
         if self.camera is not None:

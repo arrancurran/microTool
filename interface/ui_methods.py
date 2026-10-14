@@ -8,6 +8,8 @@ from .status_bar.status_bar_manager import StatusBarManager
 from acquisitions.endless_stream import EndlessStream
 from acquisitions.snapshot import Snapshot
 from acquisitions.simple_timeseries import SimpleTimeSeries
+from acquisitions.z_scan import ZScan, scan_positions
+from acquisitions.metadata_builder import build_metadata
 from .ui_img_disp.draw_roi import DrawROI
 
 from .ui_img_disp.ui_display_methods import UIDisplayMethods
@@ -27,6 +29,11 @@ class UIMethods(QObject):
         self.snapshot = Snapshot(stream_camera, window)
         self.record_stream = EndlessStream(stream_camera, window)
         self.experiment = SimpleTimeSeries(stream_camera, window)
+        self.z_scan = ZScan(window, stream_camera)
+        self.window.z_scan_button.clicked.connect(self.handle_z_scan)
+        self.z_scan.progress.connect(lambda done, total: self.window.z_scan_status.setText(f"Scanning: {done}/{total} images"))
+        self.z_scan.finished.connect(self._z_scan_finished)
+        self._z_locked_widgets = []
         self.draw_roi = DrawROI()
         self.popup_manager = PopupNotifManager(self.window)
         
@@ -92,6 +99,53 @@ class UIMethods(QObject):
         # acquisition state (so it returns to the start icon when
         # a run finishes naturally).
         self._sync_time_series_button()
+        status = self.window.piezo_control._status
+        if status and not self.z_scan.is_running:
+            units = "% travel" if status.mode.closed_loop else "V"
+            self.window.z_units_label.setText(f"Z units: {units} ({status.mode.name.replace('_', ' ').lower()})")
+            for spin in (self.window.z_start, self.window.z_end, self.window.z_increment):
+                spin.setSuffix(f" {units}")
+
+    def handle_z_scan(self):
+        if self.z_scan.is_running:
+            self.z_scan.stop()
+            self.window.z_scan_status.setText("Stopping scan…")
+            return
+        if self.experiment.is_running or self.record_stream.is_recording:
+            self.window.z_scan_status.setText("Stop the current acquisition before starting a Z scan.")
+            return
+        path = self._get_experiment_base_path()
+        if not path:
+            self.window.z_scan_status.setText("Set experiment directory and name first.")
+            return
+        try:
+            positions = scan_positions(self.window.z_start.value(), self.window.z_end.value(),
+                                       self.window.z_increment.value())
+            metadata = build_metadata("Z Scan", self.window, self.camera_control,
+                                      self.window.roi_width.value(), self.window.roi_height.value(),
+                                      requested_frames=len(positions))
+            self.z_scan.start(path, positions, self.window.z_settle.value(), metadata)
+        except Exception as exc:
+            self.window.z_scan_status.setText(str(exc))
+            return
+        widgets = [self.window.start_stream, self.window.stop_stream, self.window.snapshot,
+                   self.window.start_recording, self.window.start_experiment,
+                   self.window.exposure_container, self.window.apply_roi_button, self.window.reset_roi_button,
+                   self.window.roi_width, self.window.roi_height, self.window.roi_offset_x, self.window.roi_offset_y,
+                   self.window.z_start, self.window.z_end, self.window.z_increment, self.window.z_settle,
+                   self.window.experiment_dir_edit, self.window.experiment_name_edit]
+        self._z_locked_widgets = [(widget, widget.isEnabled()) for widget in widgets]
+        for widget, _ in self._z_locked_widgets:
+            widget.setEnabled(False)
+        self.window.z_scan_button.setText("Stop Scan")
+        self.window.z_scan_status.setText(f"Starting scan: {len(positions)} planes")
+
+    def _z_scan_finished(self, message):
+        for widget, enabled in self._z_locked_widgets:
+            widget.setEnabled(enabled)
+        self._z_locked_widgets = []
+        self.window.z_scan_button.setText("Start Scan")
+        self.window.z_scan_status.setText(message)
 
     def handle_mouse_press(self, event):
         self.image_display.handle_mouse_press(event)
@@ -113,6 +167,8 @@ class UIMethods(QObject):
         self.image_display.set_spot_positions(spots)
         
     def handle_snapshot(self):
+        if self.z_scan.is_running:
+            return
         base_path = self._get_experiment_base_path()
         if base_path is None:
             self.popup_manager.show_popup_notif("Set experiment directory and name first")
@@ -124,6 +180,8 @@ class UIMethods(QObject):
             self.popup_manager.show_popup_notif("Failed to Save Snapshot")
     
     def handle_recording(self):
+        if self.z_scan.is_running:
+            return
         
         if not hasattr(self.window.start_recording, 'is_recording'):
             self.window.start_recording.is_recording = False
@@ -158,6 +216,8 @@ class UIMethods(QObject):
         requests a graceful stop and resets the button icon.
         """
 
+        if self.z_scan.is_running:
+            return
         action = getattr(self.window, "start_experiment", None)
         if action is None:
             self.popup_manager.show_popup_notif("Start Time Series action not found in UI")

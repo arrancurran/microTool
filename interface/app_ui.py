@@ -29,7 +29,11 @@ from PyQt6.QtCore import Qt, QTimer
 
 from .ui_img_disp import DispMouseHandler
 from utils.img_hist_disp import ImgHistDisplay
+from instruments.KPC101.live_control import PiezoControl
 from instruments.SLM.udp_holo import (
+    close_udp_client,
+    get_aberration_coefficients,
+    set_aberration_coefficients,
     get_coordinate_scales,
     send_traps,
     set_coordinate_scales,
@@ -266,16 +270,10 @@ class AppUI(QMainWindow):
         if not hasattr(self, "optical_traps"):
             return
 
-        # The noCam backend exposes set_spots(); real camera controllers do
-        # not, so this has no effect on the Ximea path.
-        ui_methods = getattr(self, "ui_methods", None)
-        camera_control = getattr(ui_methods, "camera_control", None)
-        update_mock_spots = getattr(camera_control, "set_spots", None)
-        if callable(update_mock_spots):
-            try:
-                update_mock_spots(self.optical_traps)
-            except Exception as e:
-                logger.error(f"Error updating noCam hologram spots: {e}")
+        if hasattr(self, "aberration_spins"):
+            set_aberration_coefficients(**{
+                name: spin.value() for name, spin in self.aberration_spins.items()
+            })
 
         try:
             # send_traps knows how to map the generic dicts into the
@@ -289,7 +287,7 @@ class AppUI(QMainWindow):
 
             logging.getLogger(__name__).error(f"Error sending traps to SLM: {e}")
 
-        # Camera overlays and the mock hologram should still update if the SLM
+        # Camera overlays should still update if the SLM
         # UDP endpoint is unavailable.
         self._update_spot_markers_on_camera()
 
@@ -390,6 +388,11 @@ class AppUI(QMainWindow):
             self.slm_y_scale_spin.value(),
             self.slm_z_scale_spin.value(),
         )
+        self._send_optical_traps_to_slm()
+
+    def _reconnect_slm_udp(self):
+        """Release the existing socket and resend the current hologram settings."""
+        close_udp_client()
         self._send_optical_traps_to_slm()
     
     def load_ui_scaffolding(self, file_path):
@@ -536,13 +539,45 @@ class AppUI(QMainWindow):
         self.experiment_est_time_label = QLabel("Estimated time: -")
         self.experiment_est_size_label = QLabel("Estimated size: -")
 
-        layout.addWidget(mode_row)
+        self.acquisition_tabs = QTabWidget()
+        time_series_page = QWidget()
+        time_layout = QVBoxLayout(time_series_page)
+        for widget in (mode_row, fr_row, frames_row,
+                       self.experiment_est_time_label, self.experiment_est_size_label):
+            time_layout.addWidget(widget)
+        self.acquisition_tabs.addTab(time_series_page, "Time Series")
+        z_page = QWidget()
+        z_layout = QVBoxLayout(z_page)
+        self.z_units_label = QLabel("Z units follow the piezo mode: V or % travel")
+        self.z_units_label.setWordWrap(True)
+        z_layout.addWidget(self.z_units_label)
+        for title, name, value in (("Z start", "z_start", 0), ("Z end", "z_end", 10),
+                                   ("Z increment", "z_increment", 1)):
+            row = QHBoxLayout()
+            row.addWidget(QLabel(title))
+            spin = QDoubleSpinBox()
+            spin.setDecimals(3)
+            spin.setRange(0.001 if name == "z_increment" else 0, 150)
+            spin.setValue(value)
+            setattr(self, name, spin)
+            row.addWidget(spin)
+            z_layout.addLayout(row)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Settle time (s)"))
+        self.z_settle = QDoubleSpinBox()
+        self.z_settle.setRange(0.3, 60)
+        self.z_settle.setValue(0.3)
+        row.addWidget(self.z_settle)
+        z_layout.addLayout(row)
+        self.z_scan_button = QPushButton("Start Scan")
+        z_layout.addWidget(self.z_scan_button)
+        self.z_scan_status = QLabel("Ready")
+        self.z_scan_status.setWordWrap(True)
+        z_layout.addWidget(self.z_scan_status)
+        self.acquisition_tabs.addTab(z_page, "Z Scan")
+        layout.addWidget(self.acquisition_tabs)
         layout.addWidget(dir_row)
         layout.addWidget(name_row)
-        layout.addWidget(fr_row)
-        layout.addWidget(frames_row)
-        layout.addWidget(self.experiment_est_time_label)
-        layout.addWidget(self.experiment_est_size_label)
 
         # Connect browse button to QFileDialog
         def _browse_dir():
@@ -796,6 +831,38 @@ class AppUI(QMainWindow):
 
         page_layout.addWidget(scales_group)
 
+        aberration_group = QGroupBox("Zernike Aberration Correction")
+        aberration_layout = QGridLayout(aberration_group)
+        self.aberration_spins = {}
+        aberration_values = get_aberration_coefficients()
+        for row, (name, label) in enumerate((
+            ("astigmatism_1", "Astigmatism 1"),
+            ("astigmatism_2", "Astigmatism 2"),
+            ("coma_1", "Coma 1"),
+            ("coma_2", "Coma 2"),
+        )):
+            spin = QDoubleSpinBox()
+            spin.setRange(-100.0, 100.0)
+            spin.setDecimals(6)
+            spin.setSingleStep(0.01)
+            spin.setValue(aberration_values[name])
+            spin.setToolTip(
+                "Coefficient sent directly to the hologram engine in its native units. "
+                "Every change resends the UDP message."
+            )
+            self.aberration_spins[name] = spin
+            aberration_layout.addWidget(QLabel(label + ":"), row, 0)
+            aberration_layout.addWidget(spin, row, 1)
+            spin.valueChanged.connect(lambda _value: self._send_optical_traps_to_slm())
+        page_layout.addWidget(aberration_group)
+        self.slm_reconnect_button = QPushButton("Reconnect UDP / resend hologram")
+        self.slm_reconnect_button.setToolTip(
+            "Reopen the sender socket and resend current settings. "
+            "The LabVIEW receiver must be listening on 127.0.0.1:61557."
+        )
+        self.slm_reconnect_button.clicked.connect(self._reconnect_slm_udp)
+        page_layout.addWidget(self.slm_reconnect_button)
+
         # Camera alignment only moves the overlay.
         self.camera_centre_x_spin.valueChanged.connect(
             lambda _value: self._update_spot_markers_on_camera()
@@ -851,6 +918,8 @@ class AppUI(QMainWindow):
         controls_wide_layout.addWidget(self.hist_display)
         # Add combined exposure slider + label widget
         controls_wide_layout.addWidget(self.exposure_container)
+        self.piezo_control = PiezoControl(parent=self)
+        controls_wide_layout.addWidget(self.piezo_control)
 
         return controls_wide
             

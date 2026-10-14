@@ -7,10 +7,10 @@ whether the external (LabVIEW-driven) program receives/parses it correctly.
 Typical workflow:
   1. Stop the external listening program (it's using the real port).
   2. Run this script in listen mode on that same port:
-         python udp_debug_listener.py listen 61556
+         python udp_debug_listener.py listen 61557
      It will print every packet it receives, exactly as bytes were sent.
   3. In another terminal, run udp_holo.py (or call send_traps(...) yourself)
-     so it sends to 127.0.0.1:61556. Confirm the printed payload matches
+     so it sends to 127.0.0.1:61557. Confirm the printed payload matches
      build_payload_text() output.
   4. Restart the external program and repeat with your real script to see
      if it behaves differently (e.g. no response, wrong port, firewall).
@@ -18,7 +18,7 @@ Typical workflow:
 You can also use "send" mode to fire a single raw UDP payload without any
 of udp_holo.py's dependencies, useful for isolating whether the problem is
 in message construction or in the socket layer itself:
-         python udp_debug_listener.py send 127.0.0.1 61556 "hello"
+         python udp_debug_listener.py send 127.0.0.1 61557 "hello"
 """
 
 from __future__ import annotations
@@ -30,7 +30,8 @@ import time
 
 def listen(host: str, port: int) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
     sock.bind((host, port))
     print(f"Listening on {host}:{port} (Ctrl+C to stop)...")
     try:
@@ -65,7 +66,7 @@ def main() -> None:
     mode = sys.argv[1]
     if mode == "listen":
         host = sys.argv[2] if len(sys.argv) > 2 else "127.0.0.1"
-        port = int(sys.argv[3]) if len(sys.argv) > 3 else 61556
+        port = int(sys.argv[3]) if len(sys.argv) > 3 else 61557
         if len(sys.argv) == 3:
             # single arg after mode treated as port on 127.0.0.1
             host, port = "127.0.0.1", int(sys.argv[2])

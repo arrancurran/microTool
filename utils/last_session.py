@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Any, Dict
 
@@ -8,6 +9,7 @@ logger = logging.getLogger(__name__)
 # Store last-session state in the project root (same folder as app.py)
 _BASE_DIR = Path(__file__).resolve().parent.parent
 _SESSION_PATH = _BASE_DIR / "last_session.json"
+_ZERNIKE_CONTROLS = ("astigmatism_1", "astigmatism_2", "coma_1", "coma_2")
 
 _SPOT_DEFAULTS = {
     "x": 0.0,
@@ -54,7 +56,7 @@ def _normalise_spots(spots: Any) -> list[dict[str, float]]:
 def save_last_session(window: Any, camera_control: Any) -> None:
     """Persist front-panel settings to last_session.json.
 
-    Captures ROI spinboxes, exposure, SLM centre alignment, and experiment
+    Captures ROI spinboxes, exposure, SLM alignment, Zernike coefficients, and experiment
     settings so they can be restored on the next run.
     """
 
@@ -124,6 +126,17 @@ def save_last_session(window: Any, camera_control: Any) -> None:
                 logger.error(f"Error reading SLM {axis.upper()} scale: {e}")
     if slm_scales:
         data["slm_scales"] = slm_scales
+
+    # --- Engine Zernike coefficients ---
+    zernike = {}
+    spins = _safe_getattr(window, "aberration_spins") or {}
+    for name in _ZERNIKE_CONTROLS:
+        if name in spins:
+            value = float(spins[name].value())
+            if math.isfinite(value):
+                zernike[name] = value
+    if zernike:
+        data["slm_zernike"] = zernike
 
     # --- Optical trap spots ---
     spots = _normalise_spots(_safe_getattr(window, "optical_traps"))
@@ -257,13 +270,41 @@ def load_last_session(window: Any, camera_control: Any) -> None:
                 if signals_were_blocked is not None:
                     spin.blockSignals(signals_were_blocked)
 
-    # Apply all three restored values atomically and send one updated payload.
+    # Restore all Zernikes before any calibration/spot restore sends a payload.
+    zernike = data.get("slm_zernike", {})
+    spins = _safe_getattr(window, "aberration_spins") or {}
+    restored_zernike = False
+    if isinstance(zernike, dict):
+        for name in _ZERNIKE_CONTROLS:
+            if name not in zernike or name not in spins:
+                continue
+            spin = spins[name]
+            try:
+                value = float(zernike[name])
+                if not math.isfinite(value):
+                    raise ValueError("coefficient must be finite")
+                if not spin.minimum() <= value <= spin.maximum():
+                    raise ValueError("coefficient outside control range")
+                blocked = spin.blockSignals(True)
+                try:
+                    spin.setValue(value)
+                finally:
+                    spin.blockSignals(blocked)
+                restored_zernike = True
+            except (TypeError, ValueError) as e:
+                logger.warning(f"Ignoring invalid saved Zernike {name}: {e}")
+
+    # Apply restored scales and Zernikes together through the normal send path.
     apply_slm_calibration = _safe_getattr(window, "_on_slm_scale_changed")
     if restored_slm_scale and callable(apply_slm_calibration):
         try:
             apply_slm_calibration()
         except Exception as e:
             logger.error(f"Error applying restored SLM scales: {e}")
+    elif restored_zernike:
+        send_traps = _safe_getattr(window, "_send_optical_traps_to_slm")
+        if callable(send_traps):
+            send_traps()
 
     # --- Optical trap spots restore ---
     spots = _normalise_spots(data.get("optical_traps"))

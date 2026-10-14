@@ -5,6 +5,7 @@ from typing import Iterable, Mapping, Sequence, Tuple, Optional
 import logging
 import math
 import socket
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -125,20 +126,29 @@ class LabviewUdpClient:
     ) -> None:
         self.remote = (remote_host, remote_port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        # UDP Open(port=local_port)
-        self.sock.bind((local_host, local_port))
-        # Persist the remote endpoint on the socket itself (like LabVIEW's
-        # connection ID) so ICMP port-unreachable errors surface as
-        # exceptions on send() instead of being silently dropped.
-        self.sock.connect(self.remote)
+        try:
+            # On Windows, REUSEADDR can silently share an occupied UDP port.
+            # Fail clearly instead of competing with another application.
+            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            self.sock.settimeout(0.2)
+            self.sock.bind((local_host, local_port))
+            self.sock.connect(self.remote)
+        except OSError:
+            self.sock.close()
+            logger.exception(
+                "Cannot open SLM UDP %s:%s -> %s:%s. Check for another microTool "
+                "or diagnostic listener using the source port.",
+                local_host, local_port, remote_host, remote_port,
+            )
+            raise
+        logger.info("Opened SLM UDP %s -> %s", self.sock.getsockname(), self.remote)
 
     def write_text(self, payload: str) -> None:
         data = payload.encode("utf-8")
         # UDP Write(address=remote_host, port=remote_port, data=payload)
         sent = self.sock.send(data)
-        logger.debug(f"Sent {sent} bytes to {self.remote}: {payload!r}")
+        logger.debug("Submitted %s UDP bytes to %s (delivery is not acknowledged)", sent, self.remote)
 
     def close(self) -> None:
         self.sock.close()
@@ -173,11 +183,14 @@ def get_udp_client() -> LabviewUdpClient:
 
 
 def close_udp_client() -> None:
-    """Optional: call on program exit."""
+    """Release the source port; the next send opens a fresh socket."""
     global _udp_client
-    if _udp_client is not None:
-        _udp_client.close()
-        _udp_client = None
+    client, _udp_client = _udp_client, None
+    if client is not None:
+        client.close()
+
+
+atexit.register(close_udp_client)
 
 
 # Reusable defaults for fields that are not yet controlled via the UI.
@@ -218,8 +231,47 @@ DEFAULT_BLAZING: Sequence[float] = [
 
 
 
-# DEFAULT_ZERNIKE: Sequence[float] = [7.0, 0.0, -7.0] + [0.0] * 9 Thes are the values we used with Joost
-DEFAULT_ZERNIKE: Sequence[float] = [8.0] +  [0.0] * 11  # 12 Zernike coefficients, all zero
+# Engine order: astigmatism, defocus, astigmatism, trefoil, coma, coma,
+# trefoil, trefoil, astigmatism, spherical, astigmatism, trefoil.
+# Coefficients are passed through in engine units without local evaluation.
+DEFAULT_ZERNIKE: Sequence[float] = [8.0] + [0.0] * 11
+ZERNIKE_CORRECTION_INDICES = {
+    "astigmatism_1": 0,
+    "astigmatism_2": 2,
+    "coma_1": 4,
+    "coma_2": 5,
+}
+
+
+def get_zernike_coefficients() -> list[float]:
+    """Build the engine's 12 slots, keeping unsupported modes at zero."""
+    coefficients = [0.0] * 12
+    for index in ZERNIKE_CORRECTION_INDICES.values():
+        coefficients[index] = DEFAULT_ZERNIKE[index]
+    return coefficients
+
+
+def get_aberration_coefficients() -> dict[str, float]:
+    """Return the active UDP coefficients controlled by calibration."""
+    return {name: DEFAULT_ZERNIKE[index]
+            for name, index in ZERNIKE_CORRECTION_INDICES.items()}
+
+
+def set_aberration_coefficients(**coefficients: float) -> None:
+    """Replace selected UDP coefficients, preserving all other calibration."""
+    unknown = coefficients.keys() - ZERNIKE_CORRECTION_INDICES.keys()
+    if unknown:
+        raise ValueError(f"Unknown aberration coefficients: {sorted(unknown)}")
+    values = {name: float(value) for name, value in coefficients.items()}
+    if not all(math.isfinite(value) for value in values.values()):
+        raise ValueError("Aberration coefficients must be finite numbers")
+    global DEFAULT_ZERNIKE
+    updated = get_zernike_coefficients()
+    for name, value in values.items():
+        updated[ZERNIKE_CORRECTION_INDICES[name]] = value
+    DEFAULT_ZERNIKE = updated
+
+
 DEFAULT_WINDOW_RECT: Tuple[int, int, int, int] = (2560, 0, 512, 512)
 
 # Scaling factors for spot coordinates before sending to the SLM
@@ -272,7 +324,7 @@ def build_message_from_traps(traps: Iterable[Mapping[str, float]]) -> UdpHoloMes
         spots=spots,
         totalA=totalA,
         blazing=DEFAULT_BLAZING,
-        zernike=DEFAULT_ZERNIKE,
+        zernike=get_zernike_coefficients(),
         window_rect=DEFAULT_WINDOW_RECT,
         aspect=(1.0, 1.0),
         centre=(0.5, 0.5),
@@ -286,8 +338,18 @@ def send_traps(traps: Iterable[Mapping[str, float]]) -> None:
     msg = build_message_from_traps(traps)
     payload = build_payload_text(msg)
 
-    client = get_udp_client()
-    client.write_text(payload)
+    if len(payload.encode("utf-8")) > 65507:
+        raise ValueError("SLM payload exceeds the IPv4 UDP datagram limit (65507 bytes)")
+    for attempt in range(2):
+        client = get_udp_client()
+        try:
+            client.write_text(payload)
+            return
+        except OSError:
+            close_udp_client()
+            if attempt:
+                raise
+            logger.warning("SLM UDP send failed; reopening the socket and retrying once", exc_info=True)
 
 
 if __name__ == "__main__":
