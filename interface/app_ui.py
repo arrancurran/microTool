@@ -621,7 +621,7 @@ class AppUI(QMainWindow):
         layout.addWidget(selector_row)
 
         # --- Parameter rows ---
-        def make_param_row(label_text, attr_name, minimum, maximum, step, decimals=3):
+        def make_param_row(label_text, attr_name, minimum, maximum, step, decimals=6):
             row = QWidget()
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 0, 0, 0)
@@ -639,11 +639,11 @@ class AppUI(QMainWindow):
             return row, spin
 
         rows_and_spins = []
-        rows_and_spins.append(make_param_row("Intensity:", "trap_intensity_spin", 0.0, 1.0, 0.01))
+        rows_and_spins.append(make_param_row("Intensity:", "trap_intensity_spin", 0.0, 2.0, 0.001, decimals=3))
         rows_and_spins.append(make_param_row("X:", "trap_x_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Y:", "trap_y_spin", -100.0, 100.0, 0.1))
         rows_and_spins.append(make_param_row("Z:", "trap_z_spin", -100.0, 100.0, 0.1))
-        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -100.0, 100.0, 1.0))
+        rows_and_spins.append(make_param_row("Vortex:", "trap_vortex_spin", -100.0, 100.0, 1.0, decimals=0))
         rows_and_spins.append(make_param_row("Phase:", "trap_phase_spin", 0.0, 360.0, 1.0, decimals=1))
 
         for row, _spin in rows_and_spins:
